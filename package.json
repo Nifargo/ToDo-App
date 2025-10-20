@@ -1,0 +1,25 @@
+{
+  "name": "moi-spravy-todo-pwa",
+  "version": "1.0.0",
+  "description": "Простий та зручний PWA додаток для управління завданнями",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "npx http-server -p 8000 -c-1",
+    "dev": "npx live-server --port=8000"
+  },
+  "keywords": [
+    "pwa",
+    "todo",
+    "task-manager",
+    "productivity",
+    "offline-first",
+    "ukrainian"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}

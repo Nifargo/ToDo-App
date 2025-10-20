@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6366f1">
+
+    <!-- iOS specific meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Мої Справи">
+
+    <!-- Icons for iOS -->
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-167.png">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <title>Мої Справи</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Мої Справи</h1>
+        </header>
+
+        <div class="add-task-container">
+            <input
+                type="text"
+                id="taskInput"
+                placeholder="Додати нове завдання..."
+                autocomplete="off"
+            >
+            <button id="addTaskBtn" class="btn-add">+</button>
+        </div>
+
+        <div class="filter-tabs">
+            <button class="filter-btn active" data-filter="all">Всі</button>
+            <button class="filter-btn" data-filter="active">Активні</button>
+            <button class="filter-btn" data-filter="completed">Виконані</button>
+        </div>
+
+        <div class="tasks-container">
+            <ul id="taskList" class="task-list"></ul>
+        </div>
+
+        <div class="footer">
+            <span id="taskCounter" class="task-counter">0 завдань</span>
+            <button id="clearCompleted" class="btn-clear">Очистити виконані</button>
+        </div>
+    </div>
+
+    <div id="installPrompt" class="install-prompt hidden">
+        <p>Встановити додаток на домашній екран?</p>
+        <button id="installBtn" class="btn-install">Встановити</button>
+        <button id="dismissBtn" class="btn-dismiss">Пізніше</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
