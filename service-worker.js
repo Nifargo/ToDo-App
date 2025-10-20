@@ -1,19 +1,20 @@
-const CACHE_NAME = 'todo-app-v1';
+const CACHE_NAME = 'todo-app-v2';
+const BASE_PATH = '/ToDo-App';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/manifest.json',
-  '/icons/icon-72.png',
-  '/icons/icon-96.png',
-  '/icons/icon-128.png',
-  '/icons/icon-144.png',
-  '/icons/icon-152.png',
-  '/icons/icon-167.png',
-  '/icons/icon-180.png',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  `${BASE_PATH}/`,
+  `${BASE_PATH}/index.html`,
+  `${BASE_PATH}/styles.css`,
+  `${BASE_PATH}/app.js`,
+  `${BASE_PATH}/manifest.json`,
+  `${BASE_PATH}/icons/icon-72.png`,
+  `${BASE_PATH}/icons/icon-96.png`,
+  `${BASE_PATH}/icons/icon-128.png`,
+  `${BASE_PATH}/icons/icon-144.png`,
+  `${BASE_PATH}/icons/icon-152.png`,
+  `${BASE_PATH}/icons/icon-167.png`,
+  `${BASE_PATH}/icons/icon-180.png`,
+  `${BASE_PATH}/icons/icon-192.png`,
+  `${BASE_PATH}/icons/icon-512.png`
 ];
 
 // Install event - cache resources
@@ -79,7 +80,7 @@ self.addEventListener('fetch', (event) => {
         }).catch((error) => {
           console.log('Fetch failed:', error);
           // You can return a custom offline page here
-          return caches.match('/index.html');
+          return caches.match(`${BASE_PATH}/index.html`);
         });
       })
   );
@@ -101,8 +102,8 @@ async function syncTasks() {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'Нове сповіщення',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-72.png',
+    icon: `${BASE_PATH}/icons/icon-192.png`,
+    badge: `${BASE_PATH}/icons/icon-72.png`,
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -119,6 +120,6 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
-    clients.openWindow('/')
+    clients.openWindow(`${BASE_PATH}/`)
   );
 });
