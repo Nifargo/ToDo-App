@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-app-v2';
+const CACHE_NAME = 'todo-app-v3';
 const BASE_PATH = '/ToDo-App';
 const urlsToCache = [
   `${BASE_PATH}/`,
@@ -101,7 +101,7 @@ async function syncTasks() {
 // Push notifications (optional enhancement)
 self.addEventListener('push', (event) => {
   const options = {
-    body: event.data ? event.data.text() : 'Нове сповіщення',
+    body: event.data ? event.data.text() : 'New notification',
     icon: `${BASE_PATH}/icons/icon-192.png`,
     badge: `${BASE_PATH}/icons/icon-72.png`,
     vibrate: [100, 50, 100],
@@ -112,7 +112,7 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification('Мої Справи', options)
+    self.registration.showNotification('My Tasks', options)
   );
 });
 
