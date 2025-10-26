@@ -45,6 +45,22 @@
             </div>
         </header>
 
+        <!-- Search Container -->
+        <div id="searchContainer" class="search-container hidden">
+            <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <label for="searchInput" class="visually-hidden">Search tasks</label>
+                <input
+                    type="text"
+                    id="searchInput"
+                    class="search-input"
+                    placeholder="Type at least 3 characters to search..."
+                    autocomplete="off"
+                >
+                <button id="clearSearch" class="clear-search-btn">×</button>
+            </div>
+        </div>
+
         <div class="filter-tabs">
             <button class="filter-btn active" data-filter="all">All</button>
             <button class="filter-btn" data-filter="today">Today</button>

@@ -4,6 +4,9 @@ class TodoApp {
         this.tasks = this.loadTasks();
         this.currentFilter = 'all';
         this.currentView = 'tasks';
+        this.searchQuery = '';
+        this.isSearchActive = false;
+        this.editingTaskId = null; // Track which task is being edited
         this.init();
     }
 
@@ -24,8 +27,15 @@ class TodoApp {
         this.filterBtns = document.querySelectorAll('.filter-btn');
         this.navBtns = document.querySelectorAll('.nav-btn');
 
+        // Search elements
+        this.searchBtn = document.getElementById('searchBtn');
+        this.searchContainer = document.getElementById('searchContainer');
+        this.searchInput = document.getElementById('searchInput');
+        this.clearSearchBtn = document.getElementById('clearSearch');
+
         // Modal elements
         this.modal = document.getElementById('taskModal');
+        this.modalTitle = this.modal.querySelector('.modal-header h3');
         this.closeModal = document.getElementById('closeModal');
         this.cancelTask = document.getElementById('cancelTask');
         this.saveTask = document.getElementById('saveTask');
@@ -75,6 +85,11 @@ class TodoApp {
             });
         });
 
+        // Search functionality
+        this.searchBtn.addEventListener('click', () => this.toggleSearch());
+        this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        this.clearSearchBtn.addEventListener('click', () => this.clearSearch());
+
         // PWA install event listeners
         if (this.installBtn) {
             this.installBtn.addEventListener('click', () => this.handleInstall());
@@ -84,15 +99,31 @@ class TodoApp {
         }
     }
 
-    openModal() {
+    openModal(taskId = null) {
+        if (taskId) {
+            // Edit mode
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task) {
+                this.editingTaskId = taskId;
+                this.taskInput.value = task.text;
+                this.taskDate.value = task.dueDate || '';
+                this.modalTitle.textContent = 'Edit Task';
+            }
+        } else {
+            // Create mode
+            this.editingTaskId = null;
+            this.taskInput.value = '';
+            this.taskDate.value = '';
+            this.modalTitle.textContent = 'New Task';
+        }
+
         this.modal.classList.add('show');
-        this.taskInput.value = '';
-        this.taskDate.value = '';
         setTimeout(() => this.taskInput.focus(), 100);
     }
 
     closeModalDialog() {
         this.modal.classList.remove('show');
+        this.editingTaskId = null;
     }
 
     addTask() {
@@ -102,24 +133,40 @@ class TodoApp {
             return;
         }
 
-        const task = {
-            id: Date.now(),
-            text: taskText,
-            completed: false,
-            createdAt: new Date().toISOString(),
-            dueDate: this.taskDate.value || null
-        };
+        if (this.editingTaskId) {
+            // Update existing task
+            const task = this.tasks.find(t => t.id === this.editingTaskId);
+            if (task) {
+                task.text = taskText;
+                task.dueDate = this.taskDate.value || null;
+            }
+        } else {
+            // Create new task
+            const task = {
+                id: Date.now(),
+                text: taskText,
+                completed: false,
+                createdAt: new Date().toISOString(),
+                dueDate: this.taskDate.value || null
+            };
+            this.tasks.unshift(task);
+        }
 
-        this.tasks.unshift(task);
         this.saveTasks();
         this.render();
         this.closeModalDialog();
 
         // Animation feedback
-        this.addTaskBtn.style.transform = 'scale(0.9) rotate(90deg)';
-        setTimeout(() => {
-            this.addTaskBtn.style.transform = 'scale(1) rotate(0deg)';
-        }, 200);
+        if (!this.editingTaskId) {
+            this.addTaskBtn.style.transform = 'scale(0.9) rotate(90deg)';
+            setTimeout(() => {
+                this.addTaskBtn.style.transform = 'scale(1) rotate(0deg)';
+            }, 200);
+        }
+    }
+
+    editTask(id) {
+        this.openModal(id);
     }
 
     toggleTask(id) {
@@ -143,23 +190,27 @@ class TodoApp {
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
+        let filtered;
+
         switch (this.currentFilter) {
             case 'today':
-                return this.tasks.filter(t => {
+                filtered = this.tasks.filter(t => {
                     if (!t.dueDate) return false;
                     const dueDate = new Date(t.dueDate);
                     return dueDate >= today && dueDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
                 });
+                break;
             case 'month':
-                return this.tasks.filter(t => {
+                filtered = this.tasks.filter(t => {
                     if (!t.dueDate) return false;
                     const dueDate = new Date(t.dueDate);
                     return dueDate >= today && dueDate <= endOfMonth;
                 });
+                break;
             case 'all':
             default:
                 // Show all tasks with due dates from today onwards, plus tasks without due dates
-                return this.tasks.filter(t => {
+                filtered = this.tasks.filter(t => {
                     if (!t.dueDate) return true;
                     const dueDate = new Date(t.dueDate);
                     return dueDate >= today;
@@ -170,7 +221,17 @@ class TodoApp {
                     if (!b.dueDate) return -1;
                     return new Date(a.dueDate) - new Date(b.dueDate);
                 });
+                break;
         }
+
+        // Apply search filter if query is 3+ characters
+        if (this.searchQuery.length >= 3) {
+            filtered = filtered.filter(task =>
+                task.text.toLowerCase().includes(this.searchQuery)
+            );
+        }
+
+        return filtered;
     }
 
     updateFilterButtons() {
@@ -255,7 +316,8 @@ class TodoApp {
                 >
                 <span class="task-text">${this.escapeHtml(task.text)}</span>
                 ${dateDisplay ? `<span class="task-date">${dateDisplay}</span>` : ''}
-                <button class="btn-delete" onclick="app.deleteTask(${task.id})">×</button>
+                <button class="btn-edit" onclick="app.editTask(${task.id})" title="Edit task">✏️</button>
+                <button class="btn-delete" onclick="app.deleteTask(${task.id})" title="Delete task">×</button>
             </li>
         `;
     }
@@ -268,6 +330,47 @@ class TodoApp {
 
     getTaskWord(count) {
         return count === 1 ? 'task' : 'tasks';
+    }
+
+    // Search functionality
+    toggleSearch() {
+        this.isSearchActive = !this.isSearchActive;
+
+        if (this.isSearchActive) {
+            // Show search container
+            this.searchContainer.classList.remove('hidden');
+            // Switch to "All" filter
+            this.currentFilter = 'all';
+            this.updateFilterButtons();
+            // Focus on search input
+            setTimeout(() => this.searchInput.focus(), 100);
+        } else {
+            // Hide search container
+            this.searchContainer.classList.add('hidden');
+            // Clear search
+            this.clearSearch();
+        }
+    }
+
+    handleSearch(query) {
+        this.searchQuery = query.trim().toLowerCase();
+
+        // Show/hide clear button
+        if (this.searchQuery.length > 0) {
+            this.clearSearchBtn.classList.add('visible');
+        } else {
+            this.clearSearchBtn.classList.remove('visible');
+        }
+
+        // Re-render tasks with search filter
+        this.render();
+    }
+
+    clearSearch() {
+        this.searchQuery = '';
+        this.searchInput.value = '';
+        this.clearSearchBtn.classList.remove('visible');
+        this.render();
     }
 
     saveTasks() {
