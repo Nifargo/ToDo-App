@@ -690,9 +690,9 @@ header {
 .modal-body #taskInput,
 .modal-body .date-input {
     display: block;
-    width: 100%;
-    max-width: 100%;
-    padding: 12px 16px;
+    width: calc(100% - 4px);
+    max-width: calc(100% - 4px);
+    padding: 12px 14px;
     margin-bottom: 15px;
     margin-left: 0;
     margin-right: 0;
