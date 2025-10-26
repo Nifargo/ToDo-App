@@ -3,6 +3,7 @@ class TodoApp {
     constructor() {
         this.tasks = this.loadTasks();
         this.currentFilter = 'all';
+        this.currentView = 'tasks';
         this.init();
     }
 
@@ -16,28 +17,61 @@ class TodoApp {
 
     cacheElements() {
         this.taskInput = document.getElementById('taskInput');
+        this.taskDate = document.getElementById('taskDate');
         this.addTaskBtn = document.getElementById('addTaskBtn');
         this.taskList = document.getElementById('taskList');
-        this.taskCounter = document.getElementById('taskCounter');
-        this.clearCompletedBtn = document.getElementById('clearCompleted');
+        this.taskSummary = document.getElementById('taskSummary');
         this.filterBtns = document.querySelectorAll('.filter-btn');
+        this.navBtns = document.querySelectorAll('.nav-btn');
+
+        // Modal elements
+        this.modal = document.getElementById('taskModal');
+        this.closeModal = document.getElementById('closeModal');
+        this.cancelTask = document.getElementById('cancelTask');
+        this.saveTask = document.getElementById('saveTask');
+
+        // PWA elements
         this.installPrompt = document.getElementById('installPrompt');
         this.installBtn = document.getElementById('installBtn');
         this.dismissBtn = document.getElementById('dismissBtn');
     }
 
     attachEventListeners() {
-        this.addTaskBtn.addEventListener('click', () => this.addTask());
+        // Floating add button opens modal
+        this.addTaskBtn.addEventListener('click', () => this.openModal());
+
+        // Modal controls
+        this.closeModal.addEventListener('click', () => this.closeModalDialog());
+        this.cancelTask.addEventListener('click', () => this.closeModalDialog());
+        this.saveTask.addEventListener('click', () => this.addTask());
+
+        // Close modal on outside click
+        this.modal.addEventListener('click', (e) => {
+            if (e.target === this.modal) {
+                this.closeModalDialog();
+            }
+        });
+
+        // Enter key to save task
         this.taskInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addTask();
         });
-        this.clearCompletedBtn.addEventListener('click', () => this.clearCompleted());
 
+        // Filter buttons
         this.filterBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.currentFilter = e.target.dataset.filter;
                 this.updateFilterButtons();
                 this.render();
+            });
+        });
+
+        // Navigation buttons
+        this.navBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.currentView = e.currentTarget.dataset.view;
+                this.updateNavButtons();
+                this.handleViewChange();
             });
         });
 
@@ -48,6 +82,17 @@ class TodoApp {
         if (this.dismissBtn) {
             this.dismissBtn.addEventListener('click', () => this.dismissInstall());
         }
+    }
+
+    openModal() {
+        this.modal.classList.add('show');
+        this.taskInput.value = '';
+        this.taskDate.value = '';
+        setTimeout(() => this.taskInput.focus(), 100);
+    }
+
+    closeModalDialog() {
+        this.modal.classList.remove('show');
     }
 
     addTask() {
@@ -61,20 +106,20 @@ class TodoApp {
             id: Date.now(),
             text: taskText,
             completed: false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            dueDate: this.taskDate.value || null
         };
 
         this.tasks.unshift(task);
         this.saveTasks();
         this.render();
-        this.taskInput.value = '';
-        this.taskInput.focus();
+        this.closeModalDialog();
 
         // Animation feedback
-        this.addTaskBtn.style.transform = 'scale(0.9)';
+        this.addTaskBtn.style.transform = 'scale(0.9) rotate(90deg)';
         setTimeout(() => {
-            this.addTaskBtn.style.transform = 'scale(1)';
-        }, 100);
+            this.addTaskBtn.style.transform = 'scale(1) rotate(0deg)';
+        }, 200);
     }
 
     toggleTask(id) {
@@ -93,20 +138,38 @@ class TodoApp {
         this.render();
     }
 
-    clearCompleted() {
-        this.tasks = this.tasks.filter(t => !t.completed);
-        this.saveTasks();
-        this.render();
-    }
-
     getFilteredTasks() {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
         switch (this.currentFilter) {
-            case 'active':
-                return this.tasks.filter(t => !t.completed);
-            case 'completed':
-                return this.tasks.filter(t => t.completed);
+            case 'today':
+                return this.tasks.filter(t => {
+                    if (!t.dueDate) return false;
+                    const dueDate = new Date(t.dueDate);
+                    return dueDate >= today && dueDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
+                });
+            case 'month':
+                return this.tasks.filter(t => {
+                    if (!t.dueDate) return false;
+                    const dueDate = new Date(t.dueDate);
+                    return dueDate >= today && dueDate <= endOfMonth;
+                });
+            case 'all':
             default:
-                return this.tasks;
+                // Show all tasks with due dates from today onwards, plus tasks without due dates
+                return this.tasks.filter(t => {
+                    if (!t.dueDate) return true;
+                    const dueDate = new Date(t.dueDate);
+                    return dueDate >= today;
+                }).sort((a, b) => {
+                    // Sort by due date, tasks without due date go last
+                    if (!a.dueDate && !b.dueDate) return 0;
+                    if (!a.dueDate) return 1;
+                    if (!b.dueDate) return -1;
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                });
         }
     }
 
@@ -116,8 +179,35 @@ class TodoApp {
         });
     }
 
+    updateNavButtons() {
+        this.navBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === this.currentView);
+        });
+    }
+
+    handleViewChange() {
+        if (this.currentView === 'calendar') {
+            alert('Calendar - feature in development');
+        } else if (this.currentView === 'settings') {
+            alert('Settings - feature in development');
+        }
+    }
+
     render() {
         const filteredTasks = this.getFilteredTasks();
+
+        // Update task summary in header
+        const todayTasks = this.tasks.filter(t => {
+            if (!t.dueDate) return false;
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const dueDate = new Date(t.dueDate);
+            return dueDate >= today && dueDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        }).length;
+
+        this.taskSummary.textContent = todayTasks > 0
+            ? `You have ${todayTasks} ${this.getTaskWord(todayTasks)} for today`
+            : 'No tasks for today';
 
         // Update task list
         if (filteredTasks.length === 0) {
@@ -125,32 +215,35 @@ class TodoApp {
                 <div class="empty-state">
                     <div class="empty-state-icon">✨</div>
                     <div class="empty-state-text">
-                        ${this.currentFilter === 'completed' ? 'Немає виконаних завдань' :
-                          this.currentFilter === 'active' ? 'Немає активних завдань' :
-                          'Додайте своє перше завдання!'}
+                        ${this.getEmptyStateText()}
                     </div>
                 </div>
             `;
         } else {
             this.taskList.innerHTML = filteredTasks.map(task => this.createTaskHTML(task)).join('');
         }
+    }
 
-        // Update counter
-        const activeCount = this.tasks.filter(t => !t.completed).length;
-        const taskWord = this.getTaskWord(activeCount);
-        this.taskCounter.textContent = `${activeCount} ${taskWord}`;
-
-        // Update clear button
-        const completedCount = this.tasks.filter(t => t.completed).length;
-        this.clearCompletedBtn.disabled = completedCount === 0;
+    getEmptyStateText() {
+        switch (this.currentFilter) {
+            case 'today':
+                return 'No tasks for today';
+            case 'month':
+                return 'No tasks for this month';
+            default:
+                return 'No upcoming tasks';
+        }
     }
 
     createTaskHTML(task) {
-        const date = new Date(task.createdAt);
-        const formattedDate = date.toLocaleDateString('uk-UA', {
-            day: 'numeric',
-            month: 'short'
-        });
+        let dateDisplay = '';
+        if (task.dueDate) {
+            const dueDate = new Date(task.dueDate);
+            dateDisplay = dueDate.toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short'
+            });
+        }
 
         return `
             <li class="task-item ${task.completed ? 'completed' : ''}">
@@ -161,7 +254,7 @@ class TodoApp {
                     onchange="app.toggleTask(${task.id})"
                 >
                 <span class="task-text">${this.escapeHtml(task.text)}</span>
-                <span class="task-date">${formattedDate}</span>
+                ${dateDisplay ? `<span class="task-date">${dateDisplay}</span>` : ''}
                 <button class="btn-delete" onclick="app.deleteTask(${task.id})">×</button>
             </li>
         `;
@@ -174,10 +267,7 @@ class TodoApp {
     }
 
     getTaskWord(count) {
-        if (count === 0) return 'завдань';
-        if (count === 1) return 'завдання';
-        if (count >= 2 && count <= 4) return 'завдання';
-        return 'завдань';
+        return count === 1 ? 'task' : 'tasks';
     }
 
     saveTasks() {
@@ -260,7 +350,7 @@ class TodoApp {
     showIOSInstructions() {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         if (isIOS) {
-            alert('Щоб встановити додаток на iOS:\n\n1. Натисніть кнопку "Поділитися" 📤\n2. Прокрутіть і виберіть "На екран Home"\n3. Натисніть "Додати"');
+            alert('To install the app on iOS:\n\n1. Tap the "Share" button 📤\n2. Scroll and select "Add to Home Screen"\n3. Tap "Add"');
         }
     }
 }
