@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-app-v3.3';
+const CACHE_NAME = 'todo-app-v3.3.1';
 const BASE_PATH = '/ToDo-App';
 const urlsToCache = [
   `${BASE_PATH}/`,
