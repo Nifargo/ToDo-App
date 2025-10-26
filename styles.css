@@ -688,9 +688,8 @@ header {
 }
 
 .modal-body #taskInput {
-    width: calc(100% - 36px);
+    width: 100%;
     margin-bottom: 15px;
-    box-sizing: border-box;
 }
 
 .task-options {
@@ -706,7 +705,7 @@ header {
 }
 
 .date-input {
-    width: calc(100% - 27px);
+    width: 100%;
     padding: 12px;
     border: 1.5px solid rgba(99, 102, 241, 0.2);
     background: rgba(255, 255, 255, 0.9);
@@ -714,7 +713,6 @@ header {
     font-size: 16px;
     transition: all 0.3s ease;
     outline: none;
-    box-sizing: border-box;
 }
 
 .date-input:focus {
