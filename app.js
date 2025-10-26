@@ -7,6 +7,8 @@ class TodoApp {
         this.searchQuery = '';
         this.isSearchActive = false;
         this.editingTaskId = null; // Track which task is being edited
+        this.moveTimer = null; // Timer for delayed task movement
+        this.pendingMoveTaskId = null; // Track task waiting to be moved
         this.init();
     }
 
@@ -44,6 +46,11 @@ class TodoApp {
         this.installPrompt = document.getElementById('installPrompt');
         this.installBtn = document.getElementById('installBtn');
         this.dismissBtn = document.getElementById('dismissBtn');
+
+        // Toast elements
+        this.toast = document.getElementById('toast');
+        this.toastMessage = document.getElementById('toastMessage');
+        this.undoBtn = document.getElementById('undoBtn');
     }
 
     attachEventListeners() {
@@ -96,6 +103,11 @@ class TodoApp {
         }
         if (this.dismissBtn) {
             this.dismissBtn.addEventListener('click', () => this.dismissInstall());
+        }
+
+        // Toast undo button
+        if (this.undoBtn) {
+            this.undoBtn.addEventListener('click', () => this.undoComplete());
         }
     }
 
@@ -171,10 +183,52 @@ class TodoApp {
 
     toggleTask(id) {
         const task = this.tasks.find(t => t.id === id);
-        if (task) {
-            task.completed = !task.completed;
-            task.completedAt = task.completed ? new Date().toISOString() : null;
-            this.saveTasks();
+        if (!task) return;
+
+        const wasCompleted = task.completed;
+        task.completed = !task.completed;
+        task.completedAt = task.completed ? new Date().toISOString() : null;
+
+        this.saveTasks();
+
+        if (task.completed && !wasCompleted) {
+            // Task was just marked as completed
+            // Cancel any existing timer
+            if (this.moveTimer) {
+                clearTimeout(this.moveTimer);
+                this.moveTimer = null;
+            }
+
+            // Hide any existing toast
+            this.hideToast();
+
+            // Set pending task ID
+            this.pendingMoveTaskId = id;
+
+            // Show toast with undo option
+            this.showToast('Task completed! Moving to bottom in 5 seconds...');
+
+            // Set timer to move task after 5 seconds
+            this.moveTimer = setTimeout(() => {
+                this.pendingMoveTaskId = null;
+                this.moveTimer = null;
+                this.hideToast();
+                this.render(); // Re-render to move task to bottom
+            }, 5000);
+
+            // Render immediately but task stays in place (controlled by sorting logic)
+            this.render();
+        } else {
+            // Task was uncompleted or toggled while timer was active
+            // Cancel timer if this task was pending
+            if (this.pendingMoveTaskId === id) {
+                if (this.moveTimer) {
+                    clearTimeout(this.moveTimer);
+                    this.moveTimer = null;
+                }
+                this.pendingMoveTaskId = null;
+                this.hideToast();
+            }
             this.render();
         }
     }
@@ -214,15 +268,31 @@ class TodoApp {
                     if (!t.dueDate) return true;
                     const dueDate = new Date(t.dueDate);
                     return dueDate >= today;
-                }).sort((a, b) => {
-                    // Sort by due date, tasks without due date go last
-                    if (!a.dueDate && !b.dueDate) return 0;
-                    if (!a.dueDate) return 1;
-                    if (!b.dueDate) return -1;
-                    return new Date(a.dueDate) - new Date(b.dueDate);
                 });
                 break;
         }
+
+        // Sort: completed tasks go last, then by due date
+        // But keep pending tasks (with active timer) in their original position
+        filtered = filtered.sort((a, b) => {
+            // Keep task with pending move in its current position among incomplete tasks
+            const aPending = a.completed && a.id === this.pendingMoveTaskId;
+            const bPending = b.completed && b.id === this.pendingMoveTaskId;
+
+            // If a is pending, treat it as incomplete for sorting
+            const aIsComplete = a.completed && !aPending;
+            const bIsComplete = b.completed && !bPending;
+
+            // Completed tasks (not pending) always go to the end
+            if (aIsComplete && !bIsComplete) return 1;
+            if (!aIsComplete && bIsComplete) return -1;
+
+            // If both have same completion status, sort by due date
+            if (!a.dueDate && !b.dueDate) return 0;
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            return new Date(a.dueDate) - new Date(b.dueDate);
+        });
 
         // Apply search filter if query is 3+ characters
         if (this.searchQuery.length >= 3) {
@@ -342,6 +412,7 @@ class TodoApp {
             // Switch to "All" filter
             this.currentFilter = 'all';
             this.updateFilterButtons();
+            this.render(); // Re-render to show all tasks
             // Focus on search input
             setTimeout(() => this.searchInput.focus(), 100);
         } else {
@@ -371,6 +442,40 @@ class TodoApp {
         this.searchInput.value = '';
         this.clearSearchBtn.classList.remove('visible');
         this.render();
+    }
+
+    // Toast notification methods
+    showToast(message) {
+        this.toastMessage.textContent = message;
+        this.toast.classList.remove('hidden');
+        this.toast.classList.add('show');
+    }
+
+    hideToast() {
+        this.toast.classList.remove('show');
+        this.toast.classList.add('hidden');
+    }
+
+    undoComplete() {
+        // Cancel the timer if it's still running
+        if (this.moveTimer) {
+            clearTimeout(this.moveTimer);
+            this.moveTimer = null;
+        }
+
+        // Restore the task to incomplete state
+        if (this.pendingMoveTaskId) {
+            const task = this.tasks.find(t => t.id === this.pendingMoveTaskId);
+            if (task) {
+                task.completed = false;
+                task.completedAt = null;
+                this.pendingMoveTaskId = null;
+                this.saveTasks();
+                this.render();
+            }
+        }
+
+        this.hideToast();
     }
 
     saveTasks() {

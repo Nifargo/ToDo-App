@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#6366f1">
 
     <!-- Screen orientation lock -->
@@ -128,6 +128,12 @@
         <p>Install app to your home screen?</p>
         <button id="installBtn" class="btn-install">Install</button>
         <button id="dismissBtn" class="btn-dismiss">Later</button>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toastMessage" class="toast-message"></span>
+        <button id="undoBtn" class="toast-undo">Undo</button>
     </div>
 
     <script src="app.js"></script>
