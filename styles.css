@@ -701,6 +701,15 @@ header {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+/* Fix for date input browser styles */
+input[type="date"].date-input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    display: block;
+    width: auto;
+}
+
 .modal-body #taskInput:focus,
 .modal-body .date-input:focus {
     border-color: var(--primary-color);
@@ -850,9 +859,10 @@ header {
 
     .modal-body #taskInput,
     .modal-body .date-input {
-        width: 100%;
-        max-width: 100%;
-        padding: 12px;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 12px !important;
+        box-sizing: border-box !important;
     }
 }
 
