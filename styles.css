@@ -689,6 +689,7 @@ header {
 
 .modal-body #taskInput,
 .modal-body .date-input {
+    width: 100%;
     padding: 14px 18px;
     border: 1.5px solid rgba(99, 102, 241, 0.2);
     background: rgba(255, 255, 255, 0.9);
@@ -696,9 +697,12 @@ header {
     -webkit-backdrop-filter: blur(10px);
     border-radius: 14px;
     font-size: 16px;
+    font-family: inherit;
+    color: var(--text-color);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     outline: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-sizing: border-box;
 }
 
 /* Fix for date input browser styles */
@@ -707,7 +711,17 @@ input[type="date"].date-input {
     -moz-appearance: none;
     appearance: none;
     display: block;
-    width: auto;
+}
+
+/* Remove date input calendar icon on webkit browsers */
+input[type="date"].date-input::-webkit-calendar-picker-indicator {
+    background: transparent;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+input[type="date"].date-input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
 }
 
 .modal-body #taskInput:focus,
