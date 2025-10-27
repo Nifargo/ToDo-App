@@ -706,21 +706,35 @@ header {
 }
 
 /* Fix for date input browser styles */
-input[type="date"].date-input {
+.modal-body input[type="date"].date-input {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     display: block;
+    min-height: 48px;
 }
 
-/* Remove date input calendar icon on webkit browsers */
-input[type="date"].date-input::-webkit-calendar-picker-indicator {
+/* Ensure date input gets full width */
+.modal-body input[type="date"].date-input {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* iOS Safari specific fixes */
+.modal-body input[type="date"].date-input::-webkit-date-and-time-value {
+    text-align: left;
+    padding: 0;
+}
+
+/* Remove date input calendar icon styling */
+.modal-body input[type="date"].date-input::-webkit-calendar-picker-indicator {
     background: transparent;
     cursor: pointer;
     opacity: 0.6;
+    margin-left: auto;
 }
 
-input[type="date"].date-input::-webkit-calendar-picker-indicator:hover {
+.modal-body input[type="date"].date-input::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
 }
 
