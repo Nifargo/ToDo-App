@@ -775,6 +775,36 @@ header {
     color: var(--text-color);
 }
 
+/* Date input wrapper for custom placeholder */
+.date-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Custom placeholder for date input (works on iOS) */
+.date-input-wrapper::before {
+    content: attr(data-placeholder);
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    opacity: 0.7;
+    pointer-events: none;
+    font-size: 16px;
+    transition: opacity 0.2s ease;
+}
+
+/* Hide placeholder when date input has value */
+.date-input-wrapper.has-value::before {
+    opacity: 0;
+}
+
+/* Transfer data-placeholder from input to wrapper for ::before */
+.date-input-wrapper[data-placeholder]::before {
+    content: attr(data-placeholder);
+}
+
 .date-input:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
