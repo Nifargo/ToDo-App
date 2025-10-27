@@ -781,9 +781,8 @@ header {
     width: 100%;
 }
 
-/* Custom placeholder for date input (works on iOS) */
-.date-input-wrapper::before {
-    content: attr(data-placeholder);
+/* Custom placeholder span for date input (works on iOS) */
+.date-placeholder-text {
     position: absolute;
     left: 18px;
     top: 50%;
@@ -793,16 +792,7 @@ header {
     pointer-events: none;
     font-size: 16px;
     transition: opacity 0.2s ease;
-}
-
-/* Hide placeholder when date input has value */
-.date-input-wrapper.has-value::before {
-    opacity: 0;
-}
-
-/* Transfer data-placeholder from input to wrapper for ::before */
-.date-input-wrapper[data-placeholder]::before {
-    content: attr(data-placeholder);
+    z-index: 1;
 }
 
 .date-input:focus {

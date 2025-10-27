@@ -570,24 +570,34 @@ class TodoApp {
     setupDatePlaceholder() {
         if (!this.taskDate || !this.taskDateWrapper) return;
 
-        // Transfer data-placeholder from input to wrapper
-        const placeholder = this.taskDate.getAttribute('data-placeholder');
-        if (placeholder) {
-            this.taskDateWrapper.setAttribute('data-placeholder', placeholder);
-        }
+        // Create a span element for the placeholder
+        const placeholderSpan = document.createElement('span');
+        placeholderSpan.className = 'date-placeholder-text';
+        const placeholderText = this.taskDate.getAttribute('data-placeholder') || 'DD/MM/YYYY';
+        placeholderSpan.textContent = placeholderText;
+
+        // Insert placeholder span before the input
+        this.taskDateWrapper.insertBefore(placeholderSpan, this.taskDate);
+
+        // Store reference
+        this.datePlaceholder = placeholderSpan;
 
         // Update placeholder visibility based on input value
         const updatePlaceholder = () => {
             if (this.taskDate.value) {
-                this.taskDateWrapper.classList.add('has-value');
+                this.datePlaceholder.style.display = 'none';
             } else {
-                this.taskDateWrapper.classList.remove('has-value');
+                this.datePlaceholder.style.display = 'block';
             }
         };
 
         // Listen for changes
         this.taskDate.addEventListener('input', updatePlaceholder);
         this.taskDate.addEventListener('change', updatePlaceholder);
+
+        // Hide placeholder when clicking on the input
+        this.taskDate.addEventListener('focus', updatePlaceholder);
+        this.taskDate.addEventListener('blur', updatePlaceholder);
 
         // Initial check
         updatePlaceholder();
