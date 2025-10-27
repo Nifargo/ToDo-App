@@ -23,6 +23,7 @@ class TodoApp {
     cacheElements() {
         this.taskInput = document.getElementById('taskInput');
         this.taskDate = document.getElementById('taskDate');
+        this.taskDateWrapper = document.querySelector('.date-input-wrapper');
         this.addTaskBtn = document.getElementById('addTaskBtn');
         this.taskList = document.getElementById('taskList');
         this.taskSummary = document.getElementById('taskSummary');
@@ -109,6 +110,20 @@ class TodoApp {
         if (this.undoBtn) {
             this.undoBtn.addEventListener('click', () => this.undoComplete());
         }
+
+        // Date input placeholder toggle
+        if (this.taskDate && this.taskDateWrapper) {
+            this.taskDate.addEventListener('input', () => this.updateDatePlaceholder());
+            this.taskDate.addEventListener('change', () => this.updateDatePlaceholder());
+        }
+    }
+
+    updateDatePlaceholder() {
+        if (this.taskDate.value) {
+            this.taskDateWrapper.classList.add('has-value');
+        } else {
+            this.taskDateWrapper.classList.remove('has-value');
+        }
     }
 
     openModal(taskId = null) {
@@ -130,7 +145,10 @@ class TodoApp {
         }
 
         this.modal.classList.add('show');
-        setTimeout(() => this.taskInput.focus(), 100);
+        setTimeout(() => {
+            this.taskInput.focus();
+            this.updateDatePlaceholder();
+        }, 100);
     }
 
     closeModalDialog() {

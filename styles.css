@@ -775,6 +775,29 @@ header {
     color: var(--text-color);
 }
 
+/* Date input wrapper */
+.date-input-wrapper {
+    position: relative;
+}
+
+/* Fake placeholder for date input */
+.date-placeholder {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    opacity: 0.7;
+    pointer-events: none;
+    font-size: 16px;
+    z-index: 1;
+}
+
+/* Hide placeholder when input has value */
+.date-input-wrapper.has-value .date-placeholder {
+    display: none;
+}
+
 .date-input:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
