@@ -23,7 +23,6 @@ class TodoApp {
     cacheElements() {
         this.taskInput = document.getElementById('taskInput');
         this.taskDate = document.getElementById('taskDate');
-        this.taskDateWrapper = document.querySelector('.date-input-wrapper');
         this.addTaskBtn = document.getElementById('addTaskBtn');
         this.taskList = document.getElementById('taskList');
         this.taskSummary = document.getElementById('taskSummary');
@@ -52,9 +51,6 @@ class TodoApp {
         this.toast = document.getElementById('toast');
         this.toastMessage = document.getElementById('toastMessage');
         this.undoBtn = document.getElementById('undoBtn');
-
-        // Setup date input placeholder
-        this.setupDatePlaceholder();
     }
 
     attachEventListeners() {
@@ -564,50 +560,6 @@ class TodoApp {
         if (isIOS) {
             alert('To install the app on iOS:\n\n1. Tap the "Share" button 📤\n2. Scroll and select "Add to Home Screen"\n3. Tap "Add"');
         }
-    }
-
-    // Date input placeholder functionality
-    setupDatePlaceholder() {
-        if (!this.taskDate || !this.taskDateWrapper) return;
-
-        // Create a span element for the placeholder
-        const placeholderSpan = document.createElement('span');
-        placeholderSpan.className = 'date-placeholder-text';
-        const placeholderText = this.taskDate.getAttribute('data-placeholder') || 'DD/MM/YYYY';
-        placeholderSpan.textContent = placeholderText;
-
-        // Insert placeholder span before the input
-        this.taskDateWrapper.insertBefore(placeholderSpan, this.taskDate);
-
-        // Store reference
-        this.datePlaceholder = placeholderSpan;
-
-        // Update placeholder visibility based on input value
-        const updatePlaceholder = () => {
-            if (this.taskDate.value) {
-                this.datePlaceholder.style.display = 'none';
-            } else {
-                this.datePlaceholder.style.display = 'block';
-            }
-        };
-
-        // Listen for changes
-        this.taskDate.addEventListener('input', updatePlaceholder);
-        this.taskDate.addEventListener('change', updatePlaceholder);
-
-        // Hide placeholder when clicking on the input
-        this.taskDate.addEventListener('focus', updatePlaceholder);
-        this.taskDate.addEventListener('blur', updatePlaceholder);
-
-        // Initial check
-        updatePlaceholder();
-
-        // Also check when modal opens
-        const originalOpenModal = this.openModal.bind(this);
-        this.openModal = (taskId) => {
-            originalOpenModal(taskId);
-            setTimeout(updatePlaceholder, 50);
-        };
     }
 }
 
