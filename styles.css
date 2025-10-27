@@ -726,6 +726,22 @@ header {
     padding: 0;
 }
 
+/* Placeholder styling for date input */
+.modal-body input[type="date"].date-input::placeholder {
+    color: var(--text-light);
+    opacity: 0.7;
+}
+
+.modal-body input[type="date"].date-input::-webkit-input-placeholder {
+    color: var(--text-light);
+    opacity: 0.7;
+}
+
+.modal-body input[type="date"].date-input::-moz-placeholder {
+    color: var(--text-light);
+    opacity: 0.7;
+}
+
 /* Remove date input calendar icon styling */
 .modal-body input[type="date"].date-input::-webkit-calendar-picker-indicator {
     background: transparent;
