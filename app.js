@@ -354,16 +354,12 @@ class TodoApp {
                 break;
             case 'all':
             default:
-                // Show all tasks with due dates from today onwards, plus tasks without due dates
-                filtered = this.tasks.filter(t => {
-                    if (!t.dueDate) return true;
-                    const dueDate = new Date(t.dueDate);
-                    return dueDate >= today;
-                });
+                // Show ALL tasks - including overdue, today, future, and tasks without due dates
+                filtered = this.tasks;
                 break;
         }
 
-        // Sort: completed tasks go last, then by due date
+        // Sort: Overdue first, then incomplete, then completed
         // But keep pending tasks (with active timer) in their original position
         filtered = filtered.sort((a, b) => {
             // Keep task with pending move in its current position among incomplete tasks
@@ -374,11 +370,23 @@ class TodoApp {
             const aIsComplete = a.completed && !aPending;
             const bIsComplete = b.completed && !bPending;
 
-            // Completed tasks (not pending) always go to the end
+            // Check if tasks are overdue
+            const aIsOverdue = this.isOverdue(a);
+            const bIsOverdue = this.isOverdue(b);
+
+            // Priority: 1. Overdue (top), 2. Incomplete, 3. Completed (bottom)
+
+            // Completed tasks always go to the end
             if (aIsComplete && !bIsComplete) return 1;
             if (!aIsComplete && bIsComplete) return -1;
 
-            // If both have same completion status, sort by due date
+            // Among incomplete tasks, overdue tasks come first
+            if (!aIsComplete && !bIsComplete) {
+                if (aIsOverdue && !bIsOverdue) return -1;
+                if (!aIsOverdue && bIsOverdue) return 1;
+            }
+
+            // If both have same completion and overdue status, sort by due date
             if (!a.dueDate && !b.dueDate) return 0;
             if (!a.dueDate) return 1;
             if (!b.dueDate) return -1;
@@ -473,9 +481,12 @@ class TodoApp {
         const completedSubtasks = subtasks.filter(st => st.completed).length;
         const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
 
+        // Перевірка чи задача прострочена
+        const isOverdue = this.isOverdue(task);
+
         // Головна задача
         let html = `
-            <li class="task-item ${task.completed ? 'completed' : ''}">
+            <li class="task-item ${task.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}">
                 <input
                     type="checkbox"
                     class="task-checkbox"
@@ -483,6 +494,7 @@ class TodoApp {
                     onchange="app.toggleTask(${task.id})"
                 >
                 <span class="task-text">${this.escapeHtml(task.text)}</span>
+                ${isOverdue ? '<span class="overdue-badge">OVERDUE</span>' : ''}
                 ${dateDisplay ? `<span class="task-date">${dateDisplay}</span>` : ''}
                 <button
                     class="btn-toggle-expand ${task.expanded ? 'expanded' : ''}"
@@ -568,6 +580,15 @@ class TodoApp {
 
     getTaskWord(count) {
         return count === 1 ? 'task' : 'tasks';
+    }
+
+    // Check if task is overdue
+    isOverdue(task) {
+        if (!task.dueDate || task.completed) return false;
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dueDate = new Date(task.dueDate);
+        return dueDate < today;
     }
 
     // Search functionality
