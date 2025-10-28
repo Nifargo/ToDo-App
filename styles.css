@@ -375,6 +375,139 @@ header {
     opacity: 0.6;
 }
 
+/* Subtask styles - синьо-блакитний градієнт */
+.subtask-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px 12px 48px; /* більший відступ зліва */
+    margin-bottom: 8px;
+    margin-left: 20px; /* відступ від головної задачі */
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: slideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    background: linear-gradient(135deg, #667EEA 0%, #64B5F6 100%); /* синьо-блакитний */
+}
+
+.subtask-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateX(5px) scale(1.01);
+}
+
+.subtask-item.completed .subtask-text {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.subtask-text {
+    flex: 1;
+    font-size: 14px;
+    word-break: break-word;
+    color: white;
+    font-weight: 500;
+}
+
+/* Add subtask row */
+.add-subtask-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px 8px 48px;
+    margin-bottom: 8px;
+    margin-left: 20px;
+}
+
+.subtask-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1.5px solid rgba(102, 126, 234, 0.3);
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.subtask-input:focus {
+    border-color: #667EEA;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.btn-add-subtask {
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #667EEA 0%, #64B5F6 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-add-subtask:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Progress bar */
+.task-progress {
+    margin: 8px 0 4px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 3px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Toggle expand button */
+.btn-toggle-expand {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-toggle-expand:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+.btn-toggle-expand.expanded {
+    transform: rotate(180deg);
+}
+
+.btn-toggle-expand.expanded:hover {
+    transform: rotate(180deg) scale(1.1);
+}
+
 .task-checkbox {
     width: 24px;
     height: 24px;

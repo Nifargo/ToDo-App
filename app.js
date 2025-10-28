@@ -177,7 +177,9 @@ class TodoApp {
                 text: taskText,
                 completed: false,
                 createdAt: new Date().toISOString(),
-                dueDate: this.taskDate.value || null
+                dueDate: this.taskDate.value || null,
+                subtasks: [], // Підзадачі
+                expanded: false // Стан розгортання
             };
             this.tasks.unshift(task);
         }
@@ -253,6 +255,77 @@ class TodoApp {
 
     deleteTask(id) {
         this.tasks = this.tasks.filter(t => t.id !== id);
+        this.saveTasks();
+        this.render();
+    }
+
+    // Subtask methods
+    toggleExpand(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        task.expanded = !task.expanded;
+        this.saveTasks();
+        this.render();
+    }
+
+    addSubtask(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const input = document.getElementById(`subtask-input-${taskId}`);
+        if (!input) return;
+
+        const subtaskText = input.value.trim();
+        if (!subtaskText) {
+            input.focus();
+            return;
+        }
+
+        // Створення підзадачі
+        const subtask = {
+            id: Date.now(),
+            text: subtaskText,
+            completed: false
+        };
+
+        // Ініціалізуємо масив підзадач якщо його немає
+        if (!task.subtasks) {
+            task.subtasks = [];
+        }
+
+        task.subtasks.push(subtask);
+
+        // Автоматично розгортаємо задачу
+        task.expanded = true;
+
+        this.saveTasks();
+        this.render();
+
+        // Фокус на input після рендерингу
+        setTimeout(() => {
+            const newInput = document.getElementById(`subtask-input-${taskId}`);
+            if (newInput) newInput.focus();
+        }, 50);
+    }
+
+    deleteSubtask(taskId, subtaskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        task.subtasks = task.subtasks.filter(st => st.id !== subtaskId);
+        this.saveTasks();
+        this.render();
+    }
+
+    toggleSubtask(taskId, subtaskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const subtask = task.subtasks.find(st => st.id === subtaskId);
+        if (!subtask) return;
+
+        subtask.completed = !subtask.completed;
         this.saveTasks();
         this.render();
     }
@@ -394,7 +467,14 @@ class TodoApp {
             });
         }
 
-        return `
+        // Обчислення прогресу підзадач
+        const subtasks = task.subtasks || [];
+        const totalSubtasks = subtasks.length;
+        const completedSubtasks = subtasks.filter(st => st.completed).length;
+        const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+
+        // Головна задача
+        let html = `
             <li class="task-item ${task.completed ? 'completed' : ''}">
                 <input
                     type="checkbox"
@@ -404,10 +484,80 @@ class TodoApp {
                 >
                 <span class="task-text">${this.escapeHtml(task.text)}</span>
                 ${dateDisplay ? `<span class="task-date">${dateDisplay}</span>` : ''}
+                <button
+                    class="btn-toggle-expand ${task.expanded ? 'expanded' : ''}"
+                    onclick="app.toggleExpand(${task.id})"
+                    title="${task.expanded ? 'Collapse' : 'Expand'}"
+                >${totalSubtasks > 0 ? '▼' : '+'}</button>
                 <button class="btn-edit" onclick="app.editTask(${task.id})" title="Edit task">✏️</button>
                 <button class="btn-delete" onclick="app.deleteTask(${task.id})" title="Delete task">×</button>
             </li>
         `;
+
+        // Прогрес-бар (якщо є підзадачі)
+        if (totalSubtasks > 0) {
+            html += `
+                <li style="list-style: none; padding: 0 10px;">
+                    <div class="task-progress">
+                        <span>${completedSubtasks}/${totalSubtasks}</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                        </div>
+                        <span>${progressPercent}%</span>
+                    </div>
+                </li>
+            `;
+        }
+
+        // Підзадачі (якщо розгорнуто)
+        if (task.expanded && totalSubtasks > 0) {
+            subtasks.forEach(subtask => {
+                html += `
+                    <li class="subtask-item ${subtask.completed ? 'completed' : ''}">
+                        <input
+                            type="checkbox"
+                            class="task-checkbox"
+                            ${subtask.completed ? 'checked' : ''}
+                            onchange="app.toggleSubtask(${task.id}, ${subtask.id})"
+                        >
+                        <span class="subtask-text">${this.escapeHtml(subtask.text)}</span>
+                        <button class="btn-delete" onclick="app.deleteSubtask(${task.id}, ${subtask.id})" title="Delete subtask">×</button>
+                    </li>
+                `;
+            });
+
+            // Input для додавання підзадачі
+            html += `
+                <li class="add-subtask-row" style="list-style: none;">
+                    <input
+                        type="text"
+                        class="subtask-input"
+                        id="subtask-input-${task.id}"
+                        placeholder="Add subtask..."
+                        onkeypress="if(event.key === 'Enter') app.addSubtask(${task.id})"
+                    >
+                    <button class="btn-add-subtask" onclick="app.addSubtask(${task.id})">+</button>
+                </li>
+            `;
+        }
+
+        // Якщо немає підзадач але задача розгорнута, показуємо input
+        if (task.expanded && totalSubtasks === 0) {
+            html += `
+                <li class="add-subtask-row" style="list-style: none;">
+                    <input
+                        type="text"
+                        class="subtask-input"
+                        id="subtask-input-${task.id}"
+                        placeholder="Add first subtask..."
+                        onkeypress="if(event.key === 'Enter') app.addSubtask(${task.id})"
+                    >
+                    <button class="btn-add-subtask" onclick="app.addSubtask(${task.id})">+</button>
+                </li>
+            `;
+        }
+
+        return html;
     }
 
     escapeHtml(text) {
@@ -502,7 +652,14 @@ class TodoApp {
 
     loadTasks() {
         const tasks = localStorage.getItem('todo-tasks');
-        return tasks ? JSON.parse(tasks) : [];
+        if (!tasks) return [];
+
+        // Міграція: додаємо нові поля до існуючих задач
+        return JSON.parse(tasks).map(task => ({
+            ...task,
+            subtasks: task.subtasks || [],
+            expanded: task.expanded || false
+        }));
     }
 
     // PWA functionality
