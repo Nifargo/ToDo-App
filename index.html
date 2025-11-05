@@ -71,6 +71,135 @@
             <ul id="taskList" class="task-list"></ul>
         </div>
 
+        <!-- Settings View -->
+        <!-- Settings View (Main Menu) -->
+        <div id="settingsView" class="settings-view hidden">
+            <div class="settings-header">
+                <h2>Settings</h2>
+            </div>
+
+            <div class="settings-content">
+                <!-- Settings Menu -->
+                <div class="settings-menu">
+                    <button class="settings-menu-item" id="openNotificationsSettings">
+                        <span class="settings-item-icon">🔔</span>
+                        <span class="settings-item-content">
+                            <span class="settings-item-title">Notifications</span>
+                            <span class="settings-item-description">Manage task reminders and alerts</span>
+                        </span>
+                        <span class="settings-menu-arrow">›</span>
+                    </button>
+
+                    <!-- Placeholder for future settings -->
+                    <button class="settings-menu-item disabled">
+                        <span class="settings-item-icon">🎨</span>
+                        <span class="settings-item-content">
+                            <span class="settings-item-title">Appearance</span>
+                            <span class="settings-item-description">Coming soon...</span>
+                        </span>
+                        <span class="settings-menu-arrow">›</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Settings View -->
+        <div id="notificationsSettingsView" class="settings-view hidden">
+            <div class="settings-header">
+                <button id="backToSettings" class="back-btn">‹ Settings</button>
+                <h2>Notifications</h2>
+            </div>
+
+            <div class="settings-content">
+                <!-- Enable Notifications Toggle -->
+                <div class="settings-section">
+                    <div class="settings-item">
+                        <div class="settings-item-icon">🔔</div>
+                        <div class="settings-item-content">
+                            <h3>Push Notifications</h3>
+                            <p class="settings-item-description">Get reminders about your tasks</p>
+                        </div>
+                        <button id="toggleNotifications" class="toggle-btn">
+                            <span class="toggle-label">Enable</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Section -->
+                <div class="settings-section">
+                    <h3 class="section-title">Status</h3>
+                    <div class="status-list">
+                        <div class="status-item">
+                            <span class="status-label">Browser:</span>
+                            <span id="browserStatus" class="status-value">Not requested</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Service:</span>
+                            <span id="serviceStatus" class="status-value">Checking...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">FCM Token:</span>
+                            <span id="tokenStatus" class="status-value">Not available</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Times Section -->
+                <div class="settings-section">
+                    <h3 class="section-title">⏰ Notification Times</h3>
+                    <div class="settings-item">
+                        <div class="settings-item-content">
+                            <div class="label-with-help">
+                                <label for="notificationTime" class="settings-label">Daily reminder</label>
+                                <button class="help-icon" id="timeHelpBtn" type="button">?</button>
+                            </div>
+                        </div>
+                        <select id="notificationTime" class="time-select">
+                            <option value="08:00">8:00 AM</option>
+                            <option value="09:00" selected>9:00 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="18:00">6:00 PM</option>
+                            <option value="20:00">8:00 PM</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tooltip for Notification Times -->
+                <div class="tooltip-popup hidden" id="timeTooltip">
+                    <div class="tooltip-content">
+                        <p>Choose what time of day you want to receive daily task reminders</p>
+                        <button class="tooltip-close" id="closeTimeTooltip">×</button>
+                    </div>
+                </div>
+
+                <!-- Notify About Section -->
+                <div class="settings-section">
+                    <h3 class="section-title">📋 Notify me about</h3>
+                    <div class="notify-options">
+                        <label class="notify-option">
+                            <input type="checkbox" id="notifyDueToday" class="notify-checkbox" checked>
+                            <span class="notify-label">Tasks due today</span>
+                        </label>
+                        <label class="notify-option">
+                            <input type="checkbox" id="notifyOverdue" class="notify-checkbox" checked>
+                            <span class="notify-label">Overdue tasks</span>
+                        </label>
+                        <label class="notify-option">
+                            <input type="checkbox" id="notifyDueTomorrow" class="notify-checkbox">
+                            <span class="notify-label">Tasks due tomorrow</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Test Notification Button -->
+                <div class="settings-section">
+                    <button id="testNotification" class="btn-test" disabled>
+                        Send Test Notification
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
             <button class="nav-btn active" data-view="tasks">
@@ -139,6 +268,15 @@
         <button id="undoBtn" class="toast-undo">Undo</button>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+
+    <!-- App Script -->
     <script src="app.js"></script>
 </body>
 </html>

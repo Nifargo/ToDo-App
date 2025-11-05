@@ -18,6 +18,7 @@ class TodoApp {
         this.render();
         this.registerServiceWorker();
         this.checkInstallPrompt();
+        this.initializeFirebaseMessaging();
     }
 
     cacheElements() {
@@ -52,6 +53,29 @@ class TodoApp {
         this.toast = document.getElementById('toast');
         this.toastMessage = document.getElementById('toastMessage');
         this.undoBtn = document.getElementById('undoBtn');
+
+        // View containers
+        this.tasksContainer = document.querySelector('.tasks-container');
+        this.settingsView = document.getElementById('settingsView');
+        this.filterTabs = document.querySelector('.filter-tabs');
+
+        // Settings elements
+        this.settingsView = document.getElementById('settingsView');
+        this.notificationsSettingsView = document.getElementById('notificationsSettingsView');
+        this.openNotificationsSettingsBtn = document.getElementById('openNotificationsSettings');
+        this.backToSettingsBtn = document.getElementById('backToSettings');
+        this.toggleNotificationsBtn = document.getElementById('toggleNotifications');
+        this.testNotificationBtn = document.getElementById('testNotification');
+        this.browserStatus = document.getElementById('browserStatus');
+        this.serviceStatus = document.getElementById('serviceStatus');
+        this.tokenStatus = document.getElementById('tokenStatus');
+        this.notificationTimeSelect = document.getElementById('notificationTime');
+        this.notifyDueTodayCheckbox = document.getElementById('notifyDueToday');
+        this.notifyOverdueCheckbox = document.getElementById('notifyOverdue');
+        this.notifyDueTomorrowCheckbox = document.getElementById('notifyDueTomorrow');
+        this.timeHelpBtn = document.getElementById('timeHelpBtn');
+        this.timeTooltip = document.getElementById('timeTooltip');
+        this.closeTimeTooltip = document.getElementById('closeTimeTooltip');
     }
 
     attachEventListeners() {
@@ -116,6 +140,40 @@ class TodoApp {
             this.taskDate.addEventListener('input', () => this.updateDatePlaceholder());
             this.taskDate.addEventListener('change', () => this.updateDatePlaceholder());
         }
+
+        // Settings navigation
+        if (this.openNotificationsSettingsBtn) {
+            this.openNotificationsSettingsBtn.addEventListener('click', () => this.showNotificationsSettings());
+        }
+        if (this.backToSettingsBtn) {
+            this.backToSettingsBtn.addEventListener('click', () => this.showMainSettings());
+        }
+
+        // Settings event listeners
+        if (this.toggleNotificationsBtn) {
+            this.toggleNotificationsBtn.addEventListener('click', () => this.handleToggleNotifications());
+        }
+        if (this.testNotificationBtn) {
+            this.testNotificationBtn.addEventListener('click', () => this.sendTestNotification());
+        }
+        if (this.notificationTimeSelect) {
+            this.notificationTimeSelect.addEventListener('change', (e) => this.handleNotificationTimeChange(e.target.value));
+        }
+        if (this.notifyDueTodayCheckbox) {
+            this.notifyDueTodayCheckbox.addEventListener('change', (e) => this.handleNotifyCheckboxChange('dueToday', e.target.checked));
+        }
+        if (this.notifyOverdueCheckbox) {
+            this.notifyOverdueCheckbox.addEventListener('change', (e) => this.handleNotifyCheckboxChange('overdue', e.target.checked));
+        }
+        if (this.notifyDueTomorrowCheckbox) {
+            this.notifyDueTomorrowCheckbox.addEventListener('change', (e) => this.handleNotifyCheckboxChange('dueTomorrow', e.target.checked));
+        }
+        if (this.timeHelpBtn) {
+            this.timeHelpBtn.addEventListener('click', () => this.showTimeTooltip());
+        }
+        if (this.closeTimeTooltip) {
+            this.closeTimeTooltip.addEventListener('click', () => this.hideTimeTooltip());
+        }
     }
 
     updateDatePlaceholder() {
@@ -178,8 +236,8 @@ class TodoApp {
                 completed: false,
                 createdAt: new Date().toISOString(),
                 dueDate: this.taskDate.value || null,
-                subtasks: [], // Підзадачі
-                expanded: false // Стан розгортання
+                subtasks: [], // Subtasks
+                expanded: false // Expanded state
             };
             this.tasks.unshift(task);
         }
@@ -282,27 +340,27 @@ class TodoApp {
             return;
         }
 
-        // Створення підзадачі
+        // Create subtask
         const subtask = {
             id: Date.now(),
             text: subtaskText,
             completed: false
         };
 
-        // Ініціалізуємо масив підзадач якщо його немає
+        // Initialize subtasks array if it doesn't exist
         if (!task.subtasks) {
             task.subtasks = [];
         }
 
         task.subtasks.push(subtask);
 
-        // Автоматично розгортаємо задачу
+        // Automatically expand task
         task.expanded = true;
 
         this.saveTasks();
         this.render();
 
-        // Фокус на input після рендерингу
+        // Focus on input after rendering
         setTimeout(() => {
             const newInput = document.getElementById(`subtask-input-${taskId}`);
             if (newInput) newInput.focus();
@@ -417,10 +475,202 @@ class TodoApp {
 
     handleViewChange() {
         if (this.currentView === 'calendar') {
+            // Hide all views
+            this.tasksContainer.classList.add('hidden');
+            this.settingsView.classList.add('hidden');
+            this.filterTabs.classList.add('hidden');
+
             alert('Calendar - feature in development');
+
+            // Return to tasks view
+            this.currentView = 'tasks';
+            this.updateNavButtons();
+            this.handleViewChange();
         } else if (this.currentView === 'settings') {
-            alert('Settings - feature in development');
+            // Show settings, hide tasks
+            this.tasksContainer.classList.add('hidden');
+            this.settingsView.classList.remove('hidden');
+            this.filterTabs.classList.add('hidden');
+
+            // Update settings status
+            this.updateSettingsStatus();
+        } else {
+            // Show tasks, hide settings
+            this.tasksContainer.classList.remove('hidden');
+            this.settingsView.classList.add('hidden');
+            this.filterTabs.classList.remove('hidden');
         }
+    }
+
+    // Settings methods
+    updateSettingsStatus() {
+        // Update browser permission status
+        if (Notification.permission === 'granted') {
+            this.browserStatus.textContent = 'Allowed';
+            this.browserStatus.classList.add('success');
+            this.browserStatus.classList.remove('error');
+            this.toggleNotificationsBtn.classList.add('enabled');
+            this.toggleNotificationsBtn.querySelector('.toggle-label').textContent = 'Enabled';
+            this.testNotificationBtn.disabled = false;
+        } else if (Notification.permission === 'denied') {
+            this.browserStatus.textContent = 'Blocked';
+            this.browserStatus.classList.add('error');
+            this.browserStatus.classList.remove('success');
+            this.toggleNotificationsBtn.classList.remove('enabled');
+            this.toggleNotificationsBtn.querySelector('.toggle-label').textContent = 'Enable';
+            this.testNotificationBtn.disabled = true;
+        } else {
+            this.browserStatus.textContent = 'Not requested';
+            this.browserStatus.classList.remove('error', 'success');
+            this.toggleNotificationsBtn.classList.remove('enabled');
+            this.toggleNotificationsBtn.querySelector('.toggle-label').textContent = 'Enable';
+            this.testNotificationBtn.disabled = true;
+        }
+
+        // Update service worker status
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(() => {
+                this.serviceStatus.textContent = 'Connected';
+                this.serviceStatus.classList.add('success');
+                this.serviceStatus.classList.remove('error');
+            }).catch(() => {
+                this.serviceStatus.textContent = 'Disconnected';
+                this.serviceStatus.classList.add('error');
+                this.serviceStatus.classList.remove('success');
+            });
+        } else {
+            this.serviceStatus.textContent = 'Not supported';
+            this.serviceStatus.classList.add('error');
+            this.serviceStatus.classList.remove('success');
+        }
+
+        // Update FCM token status
+        if (Notification.permission === 'granted') {
+            this.tokenStatus.textContent = 'Available';
+            this.tokenStatus.classList.add('success');
+            this.tokenStatus.classList.remove('error');
+        } else {
+            this.tokenStatus.textContent = 'Not available';
+            this.tokenStatus.classList.remove('error', 'success');
+        }
+
+        // Load and set notification time and checkboxes
+        const settings = this.loadNotificationSettings();
+        if (this.notificationTimeSelect) {
+            this.notificationTimeSelect.value = settings.time;
+        }
+        if (this.notifyDueTodayCheckbox) {
+            this.notifyDueTodayCheckbox.checked = settings.dueToday;
+        }
+        if (this.notifyOverdueCheckbox) {
+            this.notifyOverdueCheckbox.checked = settings.overdue;
+        }
+        if (this.notifyDueTomorrowCheckbox) {
+            this.notifyDueTomorrowCheckbox.checked = settings.dueTomorrow;
+        }
+    }
+
+    async handleToggleNotifications() {
+        if (Notification.permission === 'granted') {
+            alert('Notifications already enabled!');
+            return;
+        }
+
+        await this.requestNotificationPermission();
+        this.updateSettingsStatus();
+    }
+
+    async sendTestNotification() {
+        if (Notification.permission !== 'granted') {
+            alert('Please enable notifications first!');
+            return;
+        }
+
+        try {
+            const notification = new Notification('Test Notification', {
+                body: 'This is a test notification from ToDo App!',
+                icon: '/icons/icon-192.png',
+                badge: '/icons/icon-72.png',
+                tag: 'test-notification'
+            });
+
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+
+            this.showToast('Test notification sent!');
+
+            // Auto-hide toast after 3 seconds
+            setTimeout(() => {
+                this.hideToast();
+            }, 3000);
+        } catch (error) {
+            console.error('Error sending test notification:', error);
+            alert('Error sending test notification: ' + error.message);
+        }
+    }
+
+    handleNotificationTimeChange(time) {
+        const settings = this.loadNotificationSettings();
+        settings.time = time;
+        this.saveNotificationSettings(settings);
+    }
+
+    handleNotifyCheckboxChange(type, checked) {
+        const settings = this.loadNotificationSettings();
+        settings[type] = checked;
+        this.saveNotificationSettings(settings);
+    }
+
+    loadNotificationSettings() {
+        const defaultSettings = {
+            time: '09:00',
+            dueToday: true,
+            overdue: true,
+            dueTomorrow: false
+        };
+
+        const saved = localStorage.getItem('notification-settings');
+        if (!saved) return defaultSettings;
+
+        try {
+            return { ...defaultSettings, ...JSON.parse(saved) };
+        } catch (e) {
+            console.error('Error loading notification settings:', e);
+            return defaultSettings;
+        }
+    }
+
+    saveNotificationSettings(settings) {
+        localStorage.setItem('notification-settings', JSON.stringify(settings));
+    }
+
+    showTimeTooltip() {
+        if (this.timeTooltip) {
+            this.timeTooltip.classList.remove('hidden');
+        }
+    }
+
+    hideTimeTooltip() {
+        if (this.timeTooltip) {
+            this.timeTooltip.classList.add('hidden');
+        }
+    }
+
+    showNotificationsSettings() {
+        this.settingsView.classList.add('hidden');
+        this.notificationsSettingsView.classList.remove('hidden');
+        this.filterTabs.classList.add('hidden');
+        this.tasksContainer.classList.add('hidden');
+        this.updateSettingsStatus();
+    }
+
+    showMainSettings() {
+        this.notificationsSettingsView.classList.add('hidden');
+        this.settingsView.classList.remove('hidden');
+        this.filterTabs.classList.add('hidden');
+        this.tasksContainer.classList.add('hidden');
     }
 
     render() {
@@ -475,16 +725,16 @@ class TodoApp {
             });
         }
 
-        // Обчислення прогресу підзадач
+        // Calculate subtasks progress
         const subtasks = task.subtasks || [];
         const totalSubtasks = subtasks.length;
         const completedSubtasks = subtasks.filter(st => st.completed).length;
         const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
 
-        // Перевірка чи задача прострочена
+        // Check if task is overdue
         const isOverdue = this.isOverdue(task);
 
-        // Головна задача
+        // Main task
         let html = `
             <li class="task-item ${task.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}">
                 <input
@@ -506,7 +756,7 @@ class TodoApp {
             </li>
         `;
 
-        // Прогрес-бар (якщо є підзадачі)
+        // Progress bar (if has subtasks)
         if (totalSubtasks > 0) {
             html += `
                 <li style="list-style: none; padding: 0 10px;">
@@ -521,7 +771,7 @@ class TodoApp {
             `;
         }
 
-        // Підзадачі (якщо розгорнуто)
+        // Subtasks (if expanded)
         if (task.expanded && totalSubtasks > 0) {
             subtasks.forEach(subtask => {
                 html += `
@@ -538,7 +788,7 @@ class TodoApp {
                 `;
             });
 
-            // Input для додавання підзадачі
+            // Input for adding subtask
             html += `
                 <li class="add-subtask-row" style="list-style: none;">
                     <input
@@ -546,14 +796,14 @@ class TodoApp {
                         class="subtask-input"
                         id="subtask-input-${task.id}"
                         placeholder="Add subtask..."
-                        onkeypress="if(event.key === 'Enter') app.addSubtask(${task.id})"
+                        onkeydown="if(event.key === 'Enter') app.addSubtask(${task.id})"
                     >
                     <button class="btn-add-subtask" onclick="app.addSubtask(${task.id})">+</button>
                 </li>
             `;
         }
 
-        // Якщо немає підзадач але задача розгорнута, показуємо input
+        // If no subtasks but task is expanded, show input
         if (task.expanded && totalSubtasks === 0) {
             html += `
                 <li class="add-subtask-row" style="list-style: none;">
@@ -562,7 +812,7 @@ class TodoApp {
                         class="subtask-input"
                         id="subtask-input-${task.id}"
                         placeholder="Add first subtask..."
-                        onkeypress="if(event.key === 'Enter') app.addSubtask(${task.id})"
+                        onkeydown="if(event.key === 'Enter') app.addSubtask(${task.id})"
                     >
                     <button class="btn-add-subtask" onclick="app.addSubtask(${task.id})">+</button>
                 </li>
@@ -675,7 +925,7 @@ class TodoApp {
         const tasks = localStorage.getItem('todo-tasks');
         if (!tasks) return [];
 
-        // Міграція: додаємо нові поля до існуючих задач
+        // Migration: add new fields to existing tasks
         return JSON.parse(tasks).map(task => ({
             ...task,
             subtasks: task.subtasks || [],
@@ -686,11 +936,13 @@ class TodoApp {
     // PWA functionality
     registerServiceWorker() {
         if ('serviceWorker' in navigator) {
-            const swPath = window.location.pathname.includes('/ToDo-App')
+            const isGitHubPages = window.location.pathname.includes('/ToDo-App');
+            const swPath = isGitHubPages
                 ? '/ToDo-App/service-worker.js'
                 : '/service-worker.js';
+            const swScope = isGitHubPages ? '/ToDo-App/' : '/';
 
-            navigator.serviceWorker.register(swPath, { scope: '/ToDo-App/' })
+            navigator.serviceWorker.register(swPath, { scope: swScope })
                 .then(registration => {
                     console.log('Service Worker registered:', registration);
                 })
@@ -757,10 +1009,97 @@ class TodoApp {
             alert('To install the app on iOS:\n\n1. Tap the "Share" button 📤\n2. Scroll and select "Add to Home Screen"\n3. Tap "Add"');
         }
     }
+
+    // Firebase Messaging functionality
+    initializeFirebaseMessaging() {
+        if (!('Notification' in window)) {
+            console.log('This browser does not support notifications');
+            return;
+        }
+
+        // Check if user has already granted permission
+        if (Notification.permission === 'granted') {
+            this.getAndSaveFCMToken();
+        }
+    }
+
+    getUserId() {
+        let userId = localStorage.getItem('user-id');
+        if (!userId) {
+            userId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('user-id', userId);
+        }
+        return userId;
+    }
+
+    async requestNotificationPermission() {
+        try {
+            const permission = await Notification.requestPermission();
+
+            if (permission === 'granted') {
+                console.log('Notification permission granted');
+                await this.getAndSaveFCMToken();
+                alert('Notifications enabled! You will receive task reminders.');
+            } else if (permission === 'denied') {
+                alert('Notifications blocked. Enable them in browser settings.');
+            } else {
+                alert('Notification permission not granted.');
+            }
+        } catch (error) {
+            console.error('Error requesting notification permission:', error);
+            alert('Error requesting notification permission: ' + error.message);
+        }
+    }
+
+    async getAndSaveFCMToken() {
+        try {
+            if (typeof messaging === 'undefined') {
+                console.error('Firebase Messaging not initialized');
+                return;
+            }
+
+            const currentToken = await messaging.getToken({ vapidKey });
+
+            if (currentToken) {
+                console.log('FCM Token:', currentToken);
+                await this.saveFCMTokenToFirestore(currentToken);
+            } else {
+                console.log('No FCM token available. Request permission to generate one.');
+            }
+        } catch (error) {
+            console.error('Error getting FCM token:', error);
+        }
+    }
+
+    async saveFCMTokenToFirestore(token) {
+        try {
+            const userId = this.getUserId();
+
+            await firestore.collection('users').doc(userId).set({
+                fcmToken: token,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                userId: userId
+            }, { merge: true });
+
+            console.log('FCM token saved to Firestore');
+        } catch (error) {
+            console.error('Error saving FCM token to Firestore:', error);
+        }
+    }
 }
 
-// Initialize app
-const app = new TodoApp();
+// Initialize app when DOM is fully loaded
+let app;
+
+// Wait for DOM to be fully loaded before initializing
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        app = new TodoApp();
+    });
+} else {
+    // DOM is already loaded
+    app = new TodoApp();
+}
 
 // Add to home screen detection for iOS
 if (window.navigator.standalone) {
