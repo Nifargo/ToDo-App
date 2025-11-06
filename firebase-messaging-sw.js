@@ -4,6 +4,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 
 // Firebase Configuration
 const firebaseConfig = {
+  apiKey: "AIzaSyAxde31tl4RazVOmcC_c14lG2b3wsPXzC0",
   authDomain: "just-do-it-c3390.firebaseapp.com",
   projectId: "just-do-it-c3390",
   storageBucket: "just-do-it-c3390.firebasestorage.app",
@@ -17,8 +18,6 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
-  console.log('Received background message:', payload);
-
   const notificationTitle = payload.notification?.title || 'Tasks for today';
   const notificationOptions = {
     body: payload.notification?.body || 'You have tasks for today',
@@ -34,4 +33,25 @@ messaging.onBackgroundMessage((payload) => {
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Notification click handler
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url.includes(urlToOpen) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
 });

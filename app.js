@@ -29,7 +29,6 @@ class TodoApp {
         setTimeout(async () => {
             try {
                 await this.syncTasksFromFirestore();
-                console.log('Startup sync completed');
             } catch (error) {
                 console.error('Startup sync failed:', error);
             }
@@ -258,7 +257,7 @@ class TodoApp {
                 // Firestore sync fields
                 userId: this.getUserId(),
                 syncedAt: null, // Will be set after first sync
-                notificationSent: false
+                lastNotificationDate: null // Last date notification was sent (YYYY-MM-DD)
             };
             this.tasks.unshift(task);
             taskToSync = task;
@@ -976,7 +975,8 @@ class TodoApp {
             // Firestore sync fields (migration for old tasks)
             userId: task.userId || userId,
             syncedAt: task.syncedAt || null,
-            notificationSent: task.notificationSent || false
+            // Migrate old notificationSent to new lastNotificationDate
+            lastNotificationDate: task.lastNotificationDate || null
         }));
     }
 
@@ -1108,7 +1108,6 @@ class TodoApp {
             const currentToken = await messaging.getToken({ vapidKey });
 
             if (currentToken) {
-                console.log('FCM Token:', currentToken);
                 await this.saveFCMTokenToFirestore(currentToken);
             } else {
                 console.log('No FCM token available. Request permission to generate one.');
@@ -1157,7 +1156,7 @@ class TodoApp {
                 expanded: task.expanded,
                 userId: task.userId,
                 syncedAt: task.syncedAt,
-                notificationSent: task.notificationSent
+                lastNotificationDate: task.lastNotificationDate
             }, { merge: true });
 
             console.log(`Task ${task.id} synced to Firestore`);
