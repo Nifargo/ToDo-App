@@ -19,6 +19,21 @@ class TodoApp {
         this.registerServiceWorker();
         this.checkInstallPrompt();
         this.initializeFirebaseMessaging();
+
+        // Sync tasks from Firestore on startup (multi-device sync)
+        this.syncOnStartup();
+    }
+
+    async syncOnStartup() {
+        // Wait a bit for Firebase to initialize
+        setTimeout(async () => {
+            try {
+                await this.syncTasksFromFirestore();
+                console.log('Startup sync completed');
+            } catch (error) {
+                console.error('Startup sync failed:', error);
+            }
+        }, 1000);
     }
 
     cacheElements() {
@@ -221,12 +236,14 @@ class TodoApp {
             return;
         }
 
+        let taskToSync;
         if (this.editingTaskId) {
             // Update existing task
             const task = this.tasks.find(t => t.id === this.editingTaskId);
             if (task) {
                 task.text = taskText;
                 task.dueDate = this.taskDate.value || null;
+                taskToSync = task;
             }
         } else {
             // Create new task
@@ -237,14 +254,24 @@ class TodoApp {
                 createdAt: new Date().toISOString(),
                 dueDate: this.taskDate.value || null,
                 subtasks: [], // Subtasks
-                expanded: false // Expanded state
+                expanded: false, // Expanded state
+                // Firestore sync fields
+                userId: this.getUserId(),
+                syncedAt: null, // Will be set after first sync
+                notificationSent: false
             };
             this.tasks.unshift(task);
+            taskToSync = task;
         }
 
         this.saveTasks();
         this.render();
         this.closeModalDialog();
+
+        // Auto-sync to Firestore
+        if (taskToSync) {
+            this.syncTaskToFirestore(taskToSync);
+        }
 
         // Animation feedback
         if (!this.editingTaskId) {
@@ -268,6 +295,9 @@ class TodoApp {
         task.completedAt = task.completed ? new Date().toISOString() : null;
 
         this.saveTasks();
+
+        // Auto-sync to Firestore
+        this.syncTaskToFirestore(task);
 
         if (task.completed && !wasCompleted) {
             // Task was just marked as completed
@@ -315,6 +345,9 @@ class TodoApp {
         this.tasks = this.tasks.filter(t => t.id !== id);
         this.saveTasks();
         this.render();
+
+        // Auto-delete from Firestore
+        this.deleteTaskFromFirestore(id);
     }
 
     // Subtask methods
@@ -360,6 +393,9 @@ class TodoApp {
         this.saveTasks();
         this.render();
 
+        // Auto-sync to Firestore
+        this.syncTaskToFirestore(task);
+
         // Focus on input after rendering
         setTimeout(() => {
             const newInput = document.getElementById(`subtask-input-${taskId}`);
@@ -374,6 +410,9 @@ class TodoApp {
         task.subtasks = task.subtasks.filter(st => st.id !== subtaskId);
         this.saveTasks();
         this.render();
+
+        // Auto-sync to Firestore
+        this.syncTaskToFirestore(task);
     }
 
     toggleSubtask(taskId, subtaskId) {
@@ -386,6 +425,9 @@ class TodoApp {
         subtask.completed = !subtask.completed;
         this.saveTasks();
         this.render();
+
+        // Auto-sync to Firestore
+        this.syncTaskToFirestore(task);
     }
 
     getFilteredTasks() {
@@ -926,10 +968,15 @@ class TodoApp {
         if (!tasks) return [];
 
         // Migration: add new fields to existing tasks
+        const userId = this.getUserId();
         return JSON.parse(tasks).map(task => ({
             ...task,
             subtasks: task.subtasks || [],
-            expanded: task.expanded || false
+            expanded: task.expanded || false,
+            // Firestore sync fields (migration for old tasks)
+            userId: task.userId || userId,
+            syncedAt: task.syncedAt || null,
+            notificationSent: task.notificationSent || false
         }));
     }
 
@@ -1084,6 +1131,142 @@ class TodoApp {
             console.log('FCM token saved to Firestore');
         } catch (error) {
             console.error('Error saving FCM token to Firestore:', error);
+        }
+    }
+
+    // Firestore sync methods
+    async syncTaskToFirestore(task) {
+        try {
+            if (typeof firestore === 'undefined') {
+                console.error('Firestore not initialized');
+                return;
+            }
+
+            // Update syncedAt timestamp
+            task.syncedAt = Date.now();
+
+            // Save to Firestore using task ID as document ID
+            await firestore.collection('tasks').doc(task.id.toString()).set({
+                id: task.id,
+                text: task.text,
+                completed: task.completed,
+                createdAt: task.createdAt,
+                completedAt: task.completedAt || null,
+                dueDate: task.dueDate,
+                subtasks: task.subtasks,
+                expanded: task.expanded,
+                userId: task.userId,
+                syncedAt: task.syncedAt,
+                notificationSent: task.notificationSent
+            }, { merge: true });
+
+            console.log(`Task ${task.id} synced to Firestore`);
+        } catch (error) {
+            console.error('Error syncing task to Firestore:', error);
+        }
+    }
+
+    async syncAllTasksToFirestore() {
+        try {
+            console.log('Syncing all tasks to Firestore...');
+
+            // Sync each task
+            for (const task of this.tasks) {
+                await this.syncTaskToFirestore(task);
+            }
+
+            // Save updated tasks to localStorage (with new syncedAt timestamps)
+            this.saveTasks();
+
+            console.log(`All ${this.tasks.length} tasks synced to Firestore`);
+        } catch (error) {
+            console.error('Error syncing all tasks to Firestore:', error);
+        }
+    }
+
+    async syncTasksFromFirestore() {
+        try {
+            if (typeof firestore === 'undefined') {
+                console.error('Firestore not initialized');
+                return;
+            }
+
+            const userId = this.getUserId();
+
+            // Get all tasks for this user from Firestore
+            const snapshot = await firestore.collection('tasks')
+                .where('userId', '==', userId)
+                .get();
+
+            if (snapshot.empty) {
+                console.log('No tasks found in Firestore');
+                return;
+            }
+
+            const firestoreTasks = [];
+            snapshot.forEach(doc => {
+                firestoreTasks.push(doc.data());
+            });
+
+            console.log(`Found ${firestoreTasks.length} tasks in Firestore`);
+
+            // Merge with local tasks
+            this.mergeTasks(firestoreTasks);
+
+            // Save merged tasks to localStorage
+            this.saveTasks();
+
+            // Re-render UI to show synced tasks
+            this.render();
+
+            console.log('Tasks synced from Firestore');
+        } catch (error) {
+            console.error('Error syncing tasks from Firestore:', error);
+        }
+    }
+
+    mergeTasks(firestoreTasks) {
+        // Create a map of local tasks by ID
+        const localTasksMap = new Map();
+        this.tasks.forEach(task => {
+            localTasksMap.set(task.id, task);
+        });
+
+        // Merge firestore tasks
+        firestoreTasks.forEach(firestoreTask => {
+            const localTask = localTasksMap.get(firestoreTask.id);
+
+            if (!localTask) {
+                // Task only exists in Firestore - add it
+                this.tasks.push(firestoreTask);
+            } else {
+                // Task exists in both - use the newer one based on syncedAt
+                const localSyncedAt = localTask.syncedAt || 0;
+                const firestoreSyncedAt = firestoreTask.syncedAt || 0;
+
+                if (firestoreSyncedAt > localSyncedAt) {
+                    // Firestore version is newer - update local
+                    const index = this.tasks.findIndex(t => t.id === firestoreTask.id);
+                    this.tasks[index] = firestoreTask;
+                    console.log(`Task ${firestoreTask.id} updated from Firestore (newer version)`);
+                } else {
+                    console.log(`Task ${localTask.id} kept local version (newer or same)`);
+                }
+            }
+        });
+    }
+
+    async deleteTaskFromFirestore(taskId) {
+        try {
+            if (typeof firestore === 'undefined') {
+                console.error('Firestore not initialized');
+                return;
+            }
+
+            await firestore.collection('tasks').doc(taskId.toString()).delete();
+            console.log(`Task ${taskId} deleted from Firestore`);
+        } catch (error) {
+            console.error('Error deleting task from Firestore:', error);
         }
     }
 }
