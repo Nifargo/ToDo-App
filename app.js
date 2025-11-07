@@ -269,7 +269,11 @@ class TodoApp {
 
         // Auto-sync to Firestore
         if (taskToSync) {
+            console.log('DEBUG: About to call syncTaskToFirestore for task:', taskToSync.id);
+            alert(`DEBUG: About to sync task ${taskToSync.id}`);
             this.syncTaskToFirestore(taskToSync);
+        } else {
+            alert('DEBUG: taskToSync is null/undefined!');
         }
 
         // Animation feedback
