@@ -72,6 +72,7 @@ class TodoApp {
         this.tasksContainer = document.querySelector('.tasks-container');
         this.settingsView = document.getElementById('settingsView');
         this.filterTabs = document.querySelector('.filter-tabs');
+        this.bottomNav = document.querySelector('.bottom-nav');
 
         // Settings elements
         this.settingsView = document.getElementById('settingsView');
@@ -707,6 +708,7 @@ class TodoApp {
         this.notificationsSettingsView.classList.remove('hidden');
         this.filterTabs.classList.add('hidden');
         this.tasksContainer.classList.add('hidden');
+        this.bottomNav.classList.add('hidden');
         this.updateSettingsStatus();
     }
 
@@ -715,6 +717,7 @@ class TodoApp {
         this.settingsView.classList.remove('hidden');
         this.filterTabs.classList.add('hidden');
         this.tasksContainer.classList.add('hidden');
+        this.bottomNav.classList.remove('hidden');
     }
 
     render() {
