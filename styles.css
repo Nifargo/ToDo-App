@@ -734,6 +734,10 @@ header {
     padding: 12px 0;
 }
 
+.bottom-nav.hidden {
+    display: none;
+}
+
 .nav-btn {
     display: flex;
     flex-direction: column;
