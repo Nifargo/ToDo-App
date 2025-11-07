@@ -5,27 +5,32 @@ export default {
     console.log('Cron trigger fired at:', new Date().toISOString());
 
     try {
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0];
-      console.log('Checking tasks for date:', today);
+      // Get current hour and today's date
+      const now = new Date();
+      const currentHour = now.getUTCHours();
+      const today = now.toISOString().split('T')[0];
+
+      console.log(`Current UTC hour: ${currentHour}, Date: ${today}`);
 
       // Get OAuth2 access token for Firebase
       const accessToken = await getAccessToken(env);
 
-      // Fetch tasks from Firestore
-      const tasks = await fetchTodaysTasks(env, accessToken, today);
-      console.log(`Found ${tasks.length} tasks for today`);
+      // Fetch all users with their notification preferences
+      const users = await fetchAllUsers(env, accessToken);
+      console.log(`Found ${users.length} total users`);
 
-      if (tasks.length === 0) {
-        console.log('No tasks to notify about');
+      // Filter users whose notification time matches current hour
+      const usersToNotify = filterUsersByNotificationTime(users, currentHour);
+      console.log(`${usersToNotify.length} users have notifications scheduled for this hour`);
+
+      if (usersToNotify.length === 0) {
+        console.log('No users to notify at this time');
         return;
       }
-      // Group tasks by userId
-      const tasksByUser = groupTasksByUser(tasks);
 
-      // Send notifications to each user
-      for (const [userId, userTasks] of Object.entries(tasksByUser)) {
-        await sendNotificationToUser(env, accessToken, userId, userTasks, today);
+      // Process each user
+      for (const user of usersToNotify) {
+        await processUserNotifications(env, accessToken, user, today);
       }
 
       console.log('All notifications sent successfully');
@@ -107,89 +112,63 @@ function pemToArrayBuffer(pem) {
   return bytes.buffer;
 }
 
-// Fetch tasks that need notification from Firestore
-async function fetchTodaysTasks(env, accessToken, today) {
-  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
-
-  // First, get all incomplete tasks - we'll filter by date in JavaScript
-  const query = {
-    structuredQuery: {
-      from: [{ collectionId: 'tasks' }],
-      where: {
-        fieldFilter: {
-          field: { fieldPath: 'completed' },
-          op: 'EQUAL',
-          value: { booleanValue: false }
-        }
-      }
-    }
-  };
+// Fetch all users from Firestore
+async function fetchAllUsers(env, accessToken) {
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/users`;
 
   const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(query)
+    headers: { 'Authorization': `Bearer ${accessToken}` }
   });
 
   if (!response.ok) {
-    console.error('Firestore query failed:', response.status);
+    console.error('Failed to fetch users:', response.status);
     return [];
   }
 
   const data = await response.json();
 
-  if (!data || data.length === 0) {
+  if (!data.documents || data.documents.length === 0) {
     return [];
   }
 
-  const tasksWithDocs = data.filter(item => item.document);
-
-  // Map to task objects
-  const allTasks = tasksWithDocs.map(item => {
-    const fields = item.document.fields;
+  // Map to user objects
+  return data.documents.map(doc => {
+    const fields = doc.fields;
     return {
-      id: item.document.name.split('/').pop(),
-      userId: fields.userId.stringValue,
-      text: fields.text.stringValue,
-      dueDate: fields.dueDate?.stringValue || null,
-      lastNotificationDate: fields.lastNotificationDate?.stringValue || null
+      userId: fields.userId?.stringValue || doc.name.split('/').pop(),
+      fcmToken: fields.fcmToken?.stringValue || null,
+      notificationTime: fields.notificationTime?.stringValue || '09:00' // Default to 09:00
     };
   });
+}
 
-  // Filter tasks: dueDate <= today, not notified today, has dueDate
-  const tasksToNotify = allTasks.filter(task => {
-    if (!task.dueDate) return false;
-    if (task.dueDate > today) return false;
-    if (task.lastNotificationDate === today) return false;
-    return true;
+// Filter users by notification time
+// Converts notification time (HH:MM) to UTC hour and compares with current hour
+function filterUsersByNotificationTime(users, currentUTCHour) {
+  return users.filter(user => {
+    if (!user.fcmToken) return false; // Skip users without FCM token
+
+    // Parse user's notification time (e.g. "09:00")
+    const [hours, minutes] = user.notificationTime.split(':').map(Number);
+
+    // Assume notificationTime is in CET timezone (UTC+1 in winter, UTC+2 in summer)
+    // For simplicity, we use UTC+1 (CET standard time)
+    // Convert CET hour to UTC hour
+    let utcHour = hours - 1; // CET is UTC+1
+    if (utcHour < 0) utcHour += 24;
+
+    return utcHour === currentUTCHour;
   });
-
-  return tasksToNotify;
 }
 
-// Group tasks by userId
-function groupTasksByUser(tasks) {
-  const grouped = {};
-  for (const task of tasks) {
-    if (!grouped[task.userId]) {
-      grouped[task.userId] = [];
-    }
-    grouped[task.userId].push(task);
-  }
-  return grouped;
-}
-
-// Send notification to a user
-async function sendNotificationToUser(env, accessToken, userId, tasks, today) {
+// Process notifications for a single user
+async function processUserNotifications(env, accessToken, user, today) {
   try {
-    // Get user's FCM token
-    const fcmToken = await getUserFCMToken(env, accessToken, userId);
+    // Fetch tasks for this user
+    const tasks = await fetchUserTasks(env, accessToken, user.userId, today);
 
-    if (!fcmToken) {
-      console.log(`No FCM token for user ${userId}`);
+    if (tasks.length === 0) {
+      console.log(`No tasks to notify for user ${user.userId}`);
       return;
     }
 
@@ -209,7 +188,7 @@ async function sendNotificationToUser(env, accessToken, userId, tasks, today) {
 
     const message = {
       message: {
-        token: fcmToken,
+        token: user.fcmToken,
         notification: {
           title: `📋 Task Reminder`,
           body: notificationBody
@@ -235,7 +214,7 @@ async function sendNotificationToUser(env, accessToken, userId, tasks, today) {
     });
 
     if (response.ok) {
-      console.log(`Notification sent to user ${userId}: ${notificationBody}`);
+      console.log(`Notification sent to user ${user.userId}: ${notificationBody}`);
 
       // Mark tasks as notified with today's date
       for (const task of tasks) {
@@ -243,25 +222,85 @@ async function sendNotificationToUser(env, accessToken, userId, tasks, today) {
       }
     } else {
       const error = await response.text();
-      console.error(`Failed to send notification to ${userId}:`, error);
+      console.error(`Failed to send notification to ${user.userId}:`, error);
     }
   } catch (error) {
-    console.error(`Error sending notification to user ${userId}:`, error);
+    console.error(`Error processing notifications for user ${user.userId}:`, error);
   }
 }
 
-// Get user's FCM token from Firestore
-async function getUserFCMToken(env, accessToken, userId) {
-  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${userId}`;
+// Fetch tasks for a specific user
+async function fetchUserTasks(env, accessToken, userId, today) {
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
+
+  const query = {
+    structuredQuery: {
+      from: [{ collectionId: 'tasks' }],
+      where: {
+        compositeFilter: {
+          op: 'AND',
+          filters: [
+            {
+              fieldFilter: {
+                field: { fieldPath: 'userId' },
+                op: 'EQUAL',
+                value: { stringValue: userId }
+              }
+            },
+            {
+              fieldFilter: {
+                field: { fieldPath: 'completed' },
+                op: 'EQUAL',
+                value: { booleanValue: false }
+              }
+            }
+          ]
+        }
+      }
+    }
+  };
 
   const response = await fetch(url, {
-    headers: { 'Authorization': `Bearer ${accessToken}` }
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(query)
   });
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    console.error(`Firestore query failed for user ${userId}:`, response.status);
+    return [];
+  }
 
   const data = await response.json();
-  return data.fields?.fcmToken?.stringValue || null;
+
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  const tasksWithDocs = data.filter(item => item.document);
+
+  // Map to task objects
+  const allTasks = tasksWithDocs.map(item => {
+    const fields = item.document.fields;
+    return {
+      id: item.document.name.split('/').pop(),
+      userId: fields.userId.stringValue,
+      text: fields.text.stringValue,
+      dueDate: fields.dueDate?.stringValue || null,
+      lastNotificationDate: fields.lastNotificationDate?.stringValue || null
+    };
+  });
+
+  // Filter tasks: dueDate <= today, not notified today, has dueDate
+  return allTasks.filter(task => {
+    if (!task.dueDate) return false;
+    if (task.dueDate > today) return false;
+    if (task.lastNotificationDate === today) return false;
+    return true;
+  });
 }
 
 // Mark task as notified with today's date

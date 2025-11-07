@@ -652,10 +652,13 @@ class TodoApp {
         }
     }
 
-    handleNotificationTimeChange(time) {
+    async handleNotificationTimeChange(time) {
         const settings = this.loadNotificationSettings();
         settings.time = time;
         this.saveNotificationSettings(settings);
+
+        // Sync notification time to Firestore
+        await this.saveNotificationTimeToFirestore(time);
     }
 
     handleNotifyCheckboxChange(type, checked) {
@@ -1120,9 +1123,11 @@ class TodoApp {
     async saveFCMTokenToFirestore(token) {
         try {
             const userId = this.getUserId();
+            const settings = this.loadNotificationSettings();
 
             await firestore.collection('users').doc(userId).set({
                 fcmToken: token,
+                notificationTime: settings.time, // Save preferred notification time (e.g. "09:00")
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 userId: userId
             }, { merge: true });
@@ -1133,13 +1138,36 @@ class TodoApp {
         }
     }
 
-    // Firestore sync methods
-    async syncTaskToFirestore(task) {
+    async saveNotificationTimeToFirestore(time) {
         try {
             if (typeof firestore === 'undefined') {
                 console.error('Firestore not initialized');
                 return;
             }
+
+            const userId = this.getUserId();
+
+            await firestore.collection('users').doc(userId).set({
+                notificationTime: time,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            console.log(`Notification time updated to ${time} in Firestore`);
+        } catch (error) {
+            console.error('Error saving notification time to Firestore:', error);
+        }
+    }
+
+    // Firestore sync methods
+    async syncTaskToFirestore(task) {
+        try {
+            if (typeof firestore === 'undefined') {
+                console.error('Firestore not initialized');
+                alert('DEBUG: Firestore not initialized!');
+                return;
+            }
+
+            alert(`DEBUG: Syncing task ${task.id} to Firestore...`);
 
             // Update syncedAt timestamp
             task.syncedAt = Date.now();
@@ -1160,8 +1188,10 @@ class TodoApp {
             }, { merge: true });
 
             console.log(`Task ${task.id} synced to Firestore`);
+            alert(`DEBUG: Task ${task.id} synced successfully!`);
         } catch (error) {
             console.error('Error syncing task to Firestore:', error);
+            alert(`DEBUG ERROR: ${error.message}`);
         }
     }
 
