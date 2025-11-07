@@ -533,6 +533,7 @@ class TodoApp {
             this.tasksContainer.classList.add('hidden');
             this.settingsView.classList.remove('hidden');
             this.filterTabs.classList.add('hidden');
+            this.bottomNav.classList.remove('hidden');
 
             // Update settings status
             this.updateSettingsStatus();
@@ -541,6 +542,7 @@ class TodoApp {
             this.tasksContainer.classList.remove('hidden');
             this.settingsView.classList.add('hidden');
             this.filterTabs.classList.remove('hidden');
+            this.bottomNav.classList.remove('hidden');
         }
     }
 
