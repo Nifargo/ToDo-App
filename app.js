@@ -269,11 +269,7 @@ class TodoApp {
 
         // Auto-sync to Firestore
         if (taskToSync) {
-            console.log('DEBUG: About to call syncTaskToFirestore for task:', taskToSync.id);
-            alert(`DEBUG: About to sync task ${taskToSync.id}`);
             this.syncTaskToFirestore(taskToSync);
-        } else {
-            alert('DEBUG: taskToSync is null/undefined!');
         }
 
         // Animation feedback
@@ -1167,11 +1163,8 @@ class TodoApp {
         try {
             if (typeof firestore === 'undefined') {
                 console.error('Firestore not initialized');
-                alert('DEBUG: Firestore not initialized!');
                 return;
             }
-
-            alert(`DEBUG: Syncing task ${task.id} to Firestore...`);
 
             // Update syncedAt timestamp
             task.syncedAt = Date.now();
@@ -1192,10 +1185,8 @@ class TodoApp {
             }, { merge: true });
 
             console.log(`Task ${task.id} synced to Firestore`);
-            alert(`DEBUG: Task ${task.id} synced successfully!`);
         } catch (error) {
             console.error('Error syncing task to Firestore:', error);
-            alert(`DEBUG ERROR: ${error.message}`);
         }
     }
 
