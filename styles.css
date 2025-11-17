@@ -60,7 +60,8 @@ body {
 
 .container {
     max-width: 600px;
-    height: 100vh;
+    height: 100vh; /* Fallback */
+    height: calc(var(--vh, 1vh) * 100); /* Dynamic viewport height for iOS */
     margin: 0 auto;
     background: var(--glass-bg);
     backdrop-filter: blur(var(--blur-amount)) saturate(180%);
