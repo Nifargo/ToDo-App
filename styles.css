@@ -60,8 +60,8 @@ body {
 
 .container {
     max-width: 600px;
-    height: 100vh; /* Fallback */
-    height: calc(var(--vh, 1vh) * 100); /* Dynamic viewport height for iOS */
+    height: 100vh; /* Fallback for older browsers */
+    height: -webkit-fill-available; /* Safari/iOS specific */
     margin: 0 auto;
     background: var(--glass-bg);
     backdrop-filter: blur(var(--blur-amount)) saturate(180%);
@@ -72,6 +72,10 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
 }
 
 header {
