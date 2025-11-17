@@ -19,26 +19,9 @@ class TodoApp {
         this.registerServiceWorker();
         this.checkInstallPrompt();
         this.initializeFirebaseMessaging();
-        this.fixIOSViewportHeight();
 
         // Sync tasks from Firestore on startup (multi-device sync)
         this.syncOnStartup();
-    }
-
-    // Fix iOS viewport height issue
-    fixIOSViewportHeight() {
-        const setViewportHeight = () => {
-            // Get actual viewport height
-            const vh = window.innerHeight * 0.01;
-            document.documentElement.style.setProperty('--vh', `${vh}px`);
-        };
-
-        // Set on load
-        setViewportHeight();
-
-        // Update on resize (when keyboard opens/closes)
-        window.addEventListener('resize', setViewportHeight);
-        window.addEventListener('orientationchange', setViewportHeight);
     }
 
     async syncOnStartup() {
