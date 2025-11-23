@@ -1192,22 +1192,8 @@ class TodoApp {
         try {
             const provider = new firebase.auth.GoogleAuthProvider();
 
-            // Improved mobile detection
-            const userAgent = navigator.userAgent;
-            const isUserAgentMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-            const isSmallScreen = window.innerWidth <= 768;
-            const isMobile = isUserAgentMobile && isTouchDevice && isSmallScreen;
-
-            console.log('[AUTH] Is Mobile:', isMobile, `(UA: ${isUserAgentMobile}, Touch: ${isTouchDevice}, Small: ${isSmallScreen})`);
-
-            if (isMobile) {
-                console.log('[AUTH] Using redirect sign-in for mobile');
-                await auth.signInWithRedirect(provider);
-            } else {
-                console.log('[AUTH] Using popup sign-in for desktop');
-                await auth.signInWithPopup(provider);
-            }
+            console.log('[AUTH] Using popup sign-in for all devices');
+            await auth.signInWithPopup(provider);
         } catch (error) {
             console.error('[AUTH] Error signing in with Google:', error);
             if (error.code !== 'auth/popup-closed-by-user') {
