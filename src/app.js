@@ -1117,12 +1117,19 @@ class TodoApp {
 
         // Handle redirect result (for mobile sign-in)
         try {
+            alert('[DEBUG] Step 1: Checking redirect result...');
             const result = await auth.getRedirectResult();
+            alert(`[DEBUG] Step 2: result exists: ${!!result}, result.user: ${!!result?.user}`);
+
             if (result && result.user) {
                 console.log('[AUTH] User signed in via redirect:', result.user.displayName);
+                alert('[DEBUG] Step 3: User signed in via redirect: ' + result.user.displayName);
+            } else {
+                alert('[DEBUG] Step 3: No user in redirect result');
             }
         } catch (error) {
             console.error('[AUTH] Error handling redirect result:', error);
+            alert('[DEBUG] Error in redirect: ' + error.message);
             // Show user-friendly error message
             if (error.code === 'auth/unauthorized-domain') {
                 alert('This domain is not authorized. Please contact support.');
