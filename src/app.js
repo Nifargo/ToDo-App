@@ -1192,10 +1192,21 @@ class TodoApp {
         try {
             const provider = new firebase.auth.GoogleAuthProvider();
 
+            alert('[DEBUG] Step A: Starting popup sign-in...');
             console.log('[AUTH] Using popup sign-in for all devices');
-            await auth.signInWithPopup(provider);
+
+            const result = await auth.signInWithPopup(provider);
+
+            alert(`[DEBUG] Step B: Popup completed! User: ${result.user?.displayName}, UID: ${result.user?.uid}`);
+            console.log('[AUTH] Popup sign-in successful:', result.user);
+
+            // Check if auth state is persisted
+            setTimeout(() => {
+                alert(`[DEBUG] Step C: After 1s - auth.currentUser: ${auth.currentUser?.displayName || 'NULL'}`);
+            }, 1000);
         } catch (error) {
             console.error('[AUTH] Error signing in with Google:', error);
+            alert('[DEBUG] Popup error: ' + error.message);
             if (error.code !== 'auth/popup-closed-by-user') {
                 alert('Sign in failed: ' + error.message);
             }
