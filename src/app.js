@@ -20,19 +20,10 @@ class TodoApp {
         this.checkInstallPrompt();
         this.initializeFirebaseMessaging();
 
-        // Sync tasks from Firestore on startup (multi-device sync)
-        this.syncOnStartup();
-    }
+        // Initialize Firebase Authentication
+        this.initializeAuth();
 
-    async syncOnStartup() {
-        // Wait a bit for Firebase to initialize
-        setTimeout(async () => {
-            try {
-                await this.syncTasksFromFirestore();
-            } catch (error) {
-                console.error('Startup sync failed:', error);
-            }
-        }, 1000);
+        // Note: Task sync happens in handleAuthStateChange() after user signs in
     }
 
     cacheElements() {
@@ -91,6 +82,13 @@ class TodoApp {
         this.timeHelpBtn = document.getElementById('timeHelpBtn');
         this.timeTooltip = document.getElementById('timeTooltip');
         this.closeTimeTooltip = document.getElementById('closeTimeTooltip');
+
+        // Authentication elements
+        this.loginScreen = document.getElementById('loginScreen');
+        this.googleSignInBtn = document.getElementById('googleSignInBtn');
+        this.signOutBtn = document.getElementById('signOutBtn');
+        this.signOutSection = document.getElementById('signOutSection');
+        this.userGreeting = document.querySelector('.user-greeting');
     }
 
     attachEventListeners() {
@@ -188,6 +186,28 @@ class TodoApp {
         }
         if (this.closeTimeTooltip) {
             this.closeTimeTooltip.addEventListener('click', () => this.hideTimeTooltip());
+        }
+
+        // Authentication event listeners
+        if (this.googleSignInBtn) {
+            this.googleSignInBtn.addEventListener('click', () => this.handleGoogleSignIn());
+        }
+        if (this.signOutBtn) {
+            this.signOutBtn.addEventListener('click', () => this.handleSignOut());
+        }
+
+        // User greeting click - show login modal if not authenticated
+        if (this.userGreeting) {
+            this.userGreeting.addEventListener('click', () => this.handleUserGreetingClick());
+        }
+
+        // Close login screen on outside click
+        if (this.loginScreen) {
+            this.loginScreen.addEventListener('click', (e) => {
+                if (e.target === this.loginScreen) {
+                    this.closeLoginScreen();
+                }
+            });
         }
     }
 
@@ -1078,13 +1098,244 @@ class TodoApp {
         }
     }
 
+    // Firebase Authentication
+    async initializeAuth() {
+        if (typeof auth === 'undefined') {
+            console.error('Firebase Auth not initialized');
+            return;
+        }
+
+        console.log('[AUTH] Initializing Firebase Auth...');
+
+        // Set persistence to LOCAL (survives page reloads and browser restarts)
+        try {
+            await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+            console.log('[AUTH] Persistence set to LOCAL');
+        } catch (error) {
+            console.error('[AUTH] Error setting persistence:', error);
+        }
+
+        // Handle redirect result (for mobile sign-in)
+        try {
+            const result = await auth.getRedirectResult();
+            if (result && result.user) {
+                console.log('[AUTH] User signed in via redirect:', result.user.displayName);
+            }
+        } catch (error) {
+            console.error('[AUTH] Error handling redirect result:', error);
+            // Show user-friendly error message
+            if (error.code === 'auth/unauthorized-domain') {
+                alert('This domain is not authorized. Please contact support.');
+            } else if (error.code !== 'auth/popup-closed-by-user') {
+                alert('Sign in failed: ' + error.message);
+            }
+        }
+
+        // Listen to auth state changes
+        auth.onAuthStateChanged((user) => {
+            console.log('[AUTH] Auth state changed:', user ? user.displayName : 'signed out');
+            this.handleAuthStateChange(user);
+        });
+    }
+
+    handleAuthStateChange(user) {
+        if (user) {
+            // User is signed in
+            console.log('User signed in:', user.displayName);
+
+            // Always keep login screen hidden
+            if (this.loginScreen) {
+                this.loginScreen.classList.add('hidden');
+            }
+
+            // Update header with Google profile
+            this.updateHeaderGreeting(user);
+
+            // Update user UI in settings
+            this.updateUserUI(user);
+
+            // Reassign local tasks to authenticated user
+            this.reassignLocalTasksToAuthenticatedUser(user.uid);
+
+            // Sync tasks from Firestore for this user
+            this.syncTasksFromFirestore();
+        } else {
+            // User is signed out - app still works with local storage
+            console.log('User signed out - using local storage');
+
+            // Keep login screen hidden - show default greeting
+            if (this.loginScreen) {
+                this.loginScreen.classList.add('hidden');
+            }
+
+            // Reset header to default state
+            this.updateHeaderGreeting(null);
+
+            // Hide sign out button in settings when user is signed out
+            if (this.signOutSection) {
+                this.signOutSection.style.display = 'none';
+            }
+
+            // Clear local tasks (they belong to the authenticated user now)
+            this.clearLocalTasks();
+        }
+    }
+
+    async handleGoogleSignIn() {
+        try {
+            const provider = new firebase.auth.GoogleAuthProvider();
+
+            // Improved mobile detection
+            const userAgent = navigator.userAgent;
+            const isUserAgentMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            const isSmallScreen = window.innerWidth <= 768;
+            const isMobile = isUserAgentMobile && isTouchDevice && isSmallScreen;
+
+            console.log('[AUTH] Is Mobile:', isMobile, `(UA: ${isUserAgentMobile}, Touch: ${isTouchDevice}, Small: ${isSmallScreen})`);
+
+            if (isMobile) {
+                console.log('[AUTH] Using redirect sign-in for mobile');
+                await auth.signInWithRedirect(provider);
+            } else {
+                console.log('[AUTH] Using popup sign-in for desktop');
+                await auth.signInWithPopup(provider);
+            }
+        } catch (error) {
+            console.error('[AUTH] Error signing in with Google:', error);
+            if (error.code !== 'auth/popup-closed-by-user') {
+                alert('Sign in failed: ' + error.message);
+            }
+        }
+    }
+
+    async handleSignOut() {
+        try {
+            await auth.signOut();
+            // handleAuthStateChange will be called automatically
+        } catch (error) {
+            console.error('Error signing out:', error);
+            alert('Sign out failed: ' + error.message);
+        }
+    }
+
+    handleUserGreetingClick() {
+        // Check if user is logged in
+        if (typeof auth !== 'undefined' && auth.currentUser) {
+            // User is logged in - do nothing (or could show profile menu later)
+            console.log('User is logged in');
+        } else {
+            // User not logged in - show login screen
+            this.showLoginScreen();
+        }
+    }
+
+    showLoginScreen() {
+        if (this.loginScreen) {
+            this.loginScreen.classList.remove('hidden');
+        }
+    }
+
+    closeLoginScreen() {
+        if (this.loginScreen) {
+            this.loginScreen.classList.add('hidden');
+        }
+    }
+
+    updateUserUI(user) {
+        if (!user) return;
+
+        // Show sign out button in settings when user is logged in
+        if (this.signOutSection) {
+            this.signOutSection.style.display = 'block';
+        }
+
+        // Note: User info (photo, name, email) is now shown in the header via updateHeaderGreeting()
+    }
+
+    updateHeaderGreeting(user) {
+        const userAvatar = document.querySelector('.user-avatar');
+        const greetingText = document.querySelector('.greeting-text h2');
+
+        if (user) {
+            // User is signed in - show Google profile photo and name
+            if (userAvatar && user.photoURL) {
+                userAvatar.innerHTML = `<img src="${user.photoURL}" alt="User avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">`;
+            }
+            if (greetingText) {
+                greetingText.textContent = `Hello, ${user.displayName || 'User'}!`;
+            }
+        } else {
+            // User is signed out - show default emoji and "Hello!"
+            if (userAvatar) {
+                userAvatar.innerHTML = '👤';
+            }
+            if (greetingText) {
+                greetingText.textContent = 'Hello!';
+            }
+        }
+    }
+
     getUserId() {
+        // If user is authenticated, use their Firebase Auth UID
+        if (typeof auth !== 'undefined' && auth.currentUser) {
+            return auth.currentUser.uid;
+        }
+
+        // Fallback to device-based ID for backwards compatibility
+        // (used when not authenticated or during migration)
         let userId = localStorage.getItem('user-id');
         if (!userId) {
             userId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
             localStorage.setItem('user-id', userId);
         }
         return userId;
+    }
+
+    async reassignLocalTasksToAuthenticatedUser(authenticatedUserId) {
+        // Get the local device-based userId that was used before authentication
+        const localUserId = localStorage.getItem('user-id');
+
+        if (!localUserId || localUserId === authenticatedUserId) {
+            // No local user ID or already using authenticated user ID
+            console.log('[AUTH] No local tasks to reassign');
+            return;
+        }
+
+        // Find all tasks that belong to the local device-based user
+        const localTasks = this.tasks.filter(task => task.userId === localUserId);
+
+        if (localTasks.length === 0) {
+            console.log('[AUTH] No local tasks found to reassign');
+            return;
+        }
+
+        console.log(`[AUTH] Reassigning ${localTasks.length} local tasks to authenticated user ${authenticatedUserId}`);
+
+        // Reassign all local tasks to the authenticated user
+        localTasks.forEach(task => {
+            task.userId = authenticatedUserId;
+            task.syncedAt = null; // Reset sync timestamp so they get synced to Firestore
+        });
+
+        // Save updated tasks to localStorage
+        this.saveTasks();
+
+        // Sync all reassigned tasks to Firestore
+        for (const task of localTasks) {
+            await this.syncTaskToFirestore(task);
+        }
+
+        console.log('[AUTH] Local tasks reassigned and synced successfully');
+    }
+
+    clearLocalTasks() {
+        // When user signs out, clear tasks from local storage
+        // (tasks are now in Firestore with the authenticated user's ID)
+        console.log('[AUTH] Clearing local tasks after sign out');
+        this.tasks = [];
+        this.saveTasks();
+        this.render();
     }
 
     async requestNotificationPermission() {

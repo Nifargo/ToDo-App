@@ -15,8 +15,20 @@ const vapidKey = "BAx2-XuP9uTBN1yD_kw7s8FyM4yD-vkw1pI93_x0b33hCKWiF6Fmgi0LBaS-IR
 firebase.initializeApp(firebaseConfig);
 
 // Initialize Firebase services
-const messaging = firebase.messaging();
+const auth = firebase.auth();
 const firestore = firebase.firestore();
+
+// Initialize messaging with error handling (requires service worker)
+let messaging;
+try {
+    if (firebase.messaging.isSupported()) {
+        messaging = firebase.messaging();
+    } else {
+        console.warn('Firebase Messaging is not supported in this browser');
+    }
+} catch (error) {
+    console.warn('Firebase Messaging initialization failed:', error);
+}
 
 // Enable offline persistence for Firestore
 firestore.enablePersistence()
