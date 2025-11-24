@@ -1012,13 +1012,16 @@ class TodoApp {
     registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             const isGitHubPages = window.location.pathname.includes('/ToDo-App');
+            const swVersion = '7.7'; // Update this when service worker changes
             const swPath = isGitHubPages
-                ? '/ToDo-App/service-worker.js'
-                : '/service-worker.js';
+                ? `/ToDo-App/service-worker.js?v=${swVersion}`
+                : `/service-worker.js?v=${swVersion}`;
             const swScope = isGitHubPages ? '/ToDo-App/' : '/';
 
             navigator.serviceWorker.register(swPath, { scope: swScope })
                 .then(registration => {
+                    // Force update check
+                    registration.update();
                     // Service Worker registered successfully
                 })
                 .catch(error => {
