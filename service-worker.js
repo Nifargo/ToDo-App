@@ -1,6 +1,6 @@
-const CACHE_NAME = 'todo-app-v7.5';
+const CACHE_NAME = 'todo-app-v7.6';
 // Use empty BASE_PATH for local development, '/ToDo-App' for GitHub Pages
-const BASE_PATH = '';
+const BASE_PATH = '/ToDo-App';
 const urlsToCache = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
