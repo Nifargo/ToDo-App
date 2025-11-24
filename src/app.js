@@ -1019,10 +1019,10 @@ class TodoApp {
 
             navigator.serviceWorker.register(swPath, { scope: swScope })
                 .then(registration => {
-                    console.log('Service Worker registered:', registration);
+                    // Service Worker registered successfully
                 })
                 .catch(error => {
-                    console.log('Service Worker registration failed:', error);
+                    console.error('Service Worker registration failed:', error);
                 });
         }
     }
@@ -1052,7 +1052,6 @@ class TodoApp {
             deferredPrompt.prompt();
 
             const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response: ${outcome}`);
             deferredPrompt = null;
         };
 
@@ -1088,7 +1087,6 @@ class TodoApp {
     // Firebase Messaging functionality
     initializeFirebaseMessaging() {
         if (!('Notification' in window)) {
-            console.log('This browser does not support notifications');
             return;
         }
 
@@ -1309,7 +1307,6 @@ class TodoApp {
             const permission = await Notification.requestPermission();
 
             if (permission === 'granted') {
-                console.log('Notification permission granted');
                 await this.getAndSaveFCMToken();
                 alert('Notifications enabled! You will receive task reminders.');
             } else if (permission === 'denied') {
@@ -1335,7 +1332,6 @@ class TodoApp {
             if (currentToken) {
                 await this.saveFCMTokenToFirestore(currentToken);
             } else {
-                console.log('No FCM token available. Request permission to generate one.');
             }
         } catch (error) {
             console.error('Error getting FCM token:', error);
@@ -1354,7 +1350,6 @@ class TodoApp {
                 userId: userId
             }, { merge: true });
 
-            console.log('FCM token saved to Firestore');
         } catch (error) {
             console.error('Error saving FCM token to Firestore:', error);
         }
@@ -1374,7 +1369,6 @@ class TodoApp {
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
 
-            console.log(`Notification time updated to ${time} in Firestore`);
         } catch (error) {
             console.error('Error saving notification time to Firestore:', error);
         }
@@ -1406,7 +1400,6 @@ class TodoApp {
                 lastNotificationDate: task.lastNotificationDate
             }, { merge: true });
 
-            console.log(`Task ${task.id} synced to Firestore`);
         } catch (error) {
             console.error('Error syncing task to Firestore:', error);
         }
@@ -1414,7 +1407,6 @@ class TodoApp {
 
     async syncAllTasksToFirestore() {
         try {
-            console.log('Syncing all tasks to Firestore...');
 
             // Sync each task
             for (const task of this.tasks) {
@@ -1424,7 +1416,6 @@ class TodoApp {
             // Save updated tasks to localStorage (with new syncedAt timestamps)
             this.saveTasks();
 
-            console.log(`All ${this.tasks.length} tasks synced to Firestore`);
         } catch (error) {
             console.error('Error syncing all tasks to Firestore:', error);
         }
@@ -1445,7 +1436,6 @@ class TodoApp {
                 .get();
 
             if (snapshot.empty) {
-                console.log('No tasks found in Firestore');
                 return;
             }
 
@@ -1454,7 +1444,6 @@ class TodoApp {
                 firestoreTasks.push(doc.data());
             });
 
-            console.log(`Found ${firestoreTasks.length} tasks in Firestore`);
 
             // Merge with local tasks
             this.mergeTasks(firestoreTasks);
@@ -1465,7 +1454,6 @@ class TodoApp {
             // Re-render UI to show synced tasks
             this.render();
 
-            console.log('Tasks synced from Firestore');
         } catch (error) {
             console.error('Error syncing tasks from Firestore:', error);
         }
@@ -1494,9 +1482,7 @@ class TodoApp {
                     // Firestore version is newer - update local
                     const index = this.tasks.findIndex(t => t.id === firestoreTask.id);
                     this.tasks[index] = firestoreTask;
-                    console.log(`Task ${firestoreTask.id} updated from Firestore (newer version)`);
                 } else {
-                    console.log(`Task ${localTask.id} kept local version (newer or same)`);
                 }
             }
         });
@@ -1510,7 +1496,6 @@ class TodoApp {
             }
 
             await firestore.collection('tasks').doc(taskId.toString()).delete();
-            console.log(`Task ${taskId} deleted from Firestore`);
         } catch (error) {
             console.error('Error deleting task from Firestore:', error);
         }
@@ -1532,5 +1517,4 @@ if (document.readyState === 'loading') {
 
 // Add to home screen detection for iOS
 if (window.navigator.standalone) {
-    console.log('App is running in standalone mode');
 }

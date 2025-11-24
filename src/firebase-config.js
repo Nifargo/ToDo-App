@@ -40,4 +40,3 @@ firestore.enablePersistence()
     }
   });
 
-console.log('Firebase initialized successfully');
