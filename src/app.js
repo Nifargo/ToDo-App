@@ -1105,24 +1105,18 @@ class TodoApp {
             return;
         }
 
-        console.log('[AUTH] Initializing Firebase Auth...');
-
         // Set persistence to LOCAL (survives page reloads and browser restarts)
         try {
             await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-            console.log('[AUTH] Persistence set to LOCAL');
         } catch (error) {
-            console.error('[AUTH] Error setting persistence:', error);
+            console.error('Error setting persistence:', error);
         }
 
         // Handle redirect result (for mobile sign-in)
         try {
             const result = await auth.getRedirectResult();
-            if (result && result.user) {
-                console.log('[AUTH] User signed in via redirect:', result.user.displayName);
-            }
         } catch (error) {
-            console.error('[AUTH] Error handling redirect result:', error);
+            console.error('Error handling redirect result:', error);
             // Show user-friendly error message
             if (error.code === 'auth/unauthorized-domain') {
                 alert('This domain is not authorized. Please contact support.');
@@ -1133,7 +1127,6 @@ class TodoApp {
 
         // Listen to auth state changes
         auth.onAuthStateChanged((user) => {
-            console.log('[AUTH] Auth state changed:', user ? user.displayName : 'signed out');
             this.handleAuthStateChange(user);
         });
     }
@@ -1141,8 +1134,6 @@ class TodoApp {
     handleAuthStateChange(user) {
         if (user) {
             // User is signed in
-            console.log('User signed in:', user.displayName);
-
             // Always keep login screen hidden
             if (this.loginScreen) {
                 this.loginScreen.classList.add('hidden');
@@ -1161,8 +1152,6 @@ class TodoApp {
             this.syncTasksFromFirestore();
         } else {
             // User is signed out - app still works with local storage
-            console.log('User signed out - using local storage');
-
             // Keep login screen hidden - show default greeting
             if (this.loginScreen) {
                 this.loginScreen.classList.add('hidden');
@@ -1184,10 +1173,9 @@ class TodoApp {
     async handleGoogleSignIn() {
         try {
             const provider = new firebase.auth.GoogleAuthProvider();
-            console.log('[AUTH] Using popup sign-in for all devices');
             await auth.signInWithPopup(provider);
         } catch (error) {
-            console.error('[AUTH] Error signing in with Google:', error);
+            console.error('Error signing in with Google:', error);
             if (error.code !== 'auth/popup-closed-by-user') {
                 alert('Sign in failed: ' + error.message);
             }
@@ -1208,7 +1196,7 @@ class TodoApp {
         // Check if user is logged in
         if (typeof auth !== 'undefined' && auth.currentUser) {
             // User is logged in - do nothing (or could show profile menu later)
-            console.log('User is logged in');
+            return;
         } else {
             // User not logged in - show login screen
             this.showLoginScreen();
@@ -1283,7 +1271,6 @@ class TodoApp {
 
         if (!localUserId || localUserId === authenticatedUserId) {
             // No local user ID or already using authenticated user ID
-            console.log('[AUTH] No local tasks to reassign');
             return;
         }
 
@@ -1291,11 +1278,8 @@ class TodoApp {
         const localTasks = this.tasks.filter(task => task.userId === localUserId);
 
         if (localTasks.length === 0) {
-            console.log('[AUTH] No local tasks found to reassign');
             return;
         }
-
-        console.log(`[AUTH] Reassigning ${localTasks.length} local tasks to authenticated user ${authenticatedUserId}`);
 
         // Reassign all local tasks to the authenticated user
         localTasks.forEach(task => {
@@ -1310,14 +1294,11 @@ class TodoApp {
         for (const task of localTasks) {
             await this.syncTaskToFirestore(task);
         }
-
-        console.log('[AUTH] Local tasks reassigned and synced successfully');
     }
 
     clearLocalTasks() {
         // When user signs out, clear tasks from local storage
         // (tasks are now in Firestore with the authenticated user's ID)
-        console.log('[AUTH] Clearing local tasks after sign out');
         this.tasks = [];
         this.saveTasks();
         this.render();
