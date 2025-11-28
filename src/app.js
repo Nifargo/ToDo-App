@@ -9,6 +9,7 @@ class TodoApp {
         this.editingTaskId = null; // Track which task is being edited
         this.moveTimer = null; // Timer for delayed task movement
         this.pendingMoveTaskId = null; // Track task waiting to be moved
+        this.firestoreUnsubscribe = null; // Store unsubscribe function for real-time listener
         this.init();
     }
 
@@ -1166,6 +1167,12 @@ class TodoApp {
                 this.signOutSection.style.display = 'none';
             }
 
+            // Unsubscribe from Firestore listener when user logs out
+            if (this.firestoreUnsubscribe) {
+                this.firestoreUnsubscribe();
+                this.firestoreUnsubscribe = null;
+            }
+
             // Clear local tasks (they belong to the authenticated user now)
             this.clearLocalTasks();
         }
@@ -1424,7 +1431,7 @@ class TodoApp {
         }
     }
 
-    async syncTasksFromFirestore() {
+    syncTasksFromFirestore() {
         try {
             if (typeof firestore === 'undefined') {
                 console.error('Firestore not initialized');
@@ -1433,32 +1440,39 @@ class TodoApp {
 
             const userId = this.getUserId();
 
-            // Get all tasks for this user from Firestore
-            const snapshot = await firestore.collection('tasks')
-                .where('userId', '==', userId)
-                .get();
-
-            if (snapshot.empty) {
-                return;
+            // Unsubscribe from any existing listener before creating a new one
+            if (this.firestoreUnsubscribe) {
+                this.firestoreUnsubscribe();
             }
 
-            const firestoreTasks = [];
-            snapshot.forEach(doc => {
-                firestoreTasks.push(doc.data());
-            });
+            // Set up real-time listener for tasks
+            // This will automatically sync whenever tasks change in Firestore
+            this.firestoreUnsubscribe = firestore.collection('tasks')
+                .where('userId', '==', userId)
+                .onSnapshot((snapshot) => {
+                    if (snapshot.empty) {
+                        return;
+                    }
 
+                    const firestoreTasks = [];
+                    snapshot.forEach(doc => {
+                        firestoreTasks.push(doc.data());
+                    });
 
-            // Merge with local tasks
-            this.mergeTasks(firestoreTasks);
+                    // Merge with local tasks
+                    this.mergeTasks(firestoreTasks);
 
-            // Save merged tasks to localStorage
-            this.saveTasks();
+                    // Save merged tasks to localStorage
+                    this.saveTasks();
 
-            // Re-render UI to show synced tasks
-            this.render();
+                    // Re-render UI to show synced tasks
+                    this.render();
+                }, (error) => {
+                    console.error('Error in Firestore listener:', error);
+                });
 
         } catch (error) {
-            console.error('Error syncing tasks from Firestore:', error);
+            console.error('Error setting up Firestore listener:', error);
         }
     }
 
