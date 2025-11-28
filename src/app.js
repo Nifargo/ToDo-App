@@ -1009,10 +1009,23 @@ class TodoApp {
     }
 
     // PWA functionality
-    registerServiceWorker() {
+    async registerServiceWorker() {
         if ('serviceWorker' in navigator) {
+            // First, unregister ALL old service workers
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+                await registration.unregister();
+            }
+
+            // Clear all caches
+            const cacheNames = await caches.keys();
+            for (const cacheName of cacheNames) {
+                await caches.delete(cacheName);
+            }
+
+            // Now register the new service worker
             const isGitHubPages = window.location.pathname.includes('/ToDo-App');
-            const swVersion = '7.8'; // Update this when service worker changes
+            const swVersion = '7.9'; // Update this when service worker changes
             const swPath = isGitHubPages
                 ? `/ToDo-App/service-worker.js?v=${swVersion}`
                 : `/service-worker.js?v=${swVersion}`;
