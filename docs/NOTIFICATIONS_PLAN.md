@@ -359,7 +359,7 @@ service cloud.firestore {
 
 ## Прогрес
 
-**Загалом:** ~64 з 80+ завдань виконано (~80%)
+**Загалом:** ~75 з 82 завдань виконано (~93%)
 
 - [x] **Фаза 1: Налаштування Firebase (4/4)** ✅ COMPLETED
 - [x] **Фаза 2: Інтеграція Firebase у PWA (4/4)** ✅ COMPLETED
@@ -416,36 +416,33 @@ service cloud.firestore {
 
 ---
 
-## Minor Issues / Tech Debt (не критично, виправити пізніше)
+## Minor Issues / Tech Debt ✅ MOSTLY COMPLETED (3/4)
 
 ### Firebase Auth Warnings
 - [ ] **Cross-Origin-Opener-Policy warnings** (popup.ts)
   - Опис: Firebase Auth popup warnings в Console
   - Вплив: Не впливає на функціональність, popup працює коректно
   - Пріоритет: Low (можна ігнорувати)
-  - Рішення: Додати COOP headers на сервері (якщо потрібно)
+  - Рішення: Додати COOP headers на сервері (недоступно на GitHub Pages)
+  - **Статус:** Залишається як є - це SDK issue, не критично
 
-### PWA Manifest Issues
-- [ ] **Manifest warnings**
-  - `property 'url' ignored, should be within scope`
-  - `property 'url' of 'shortcut' not present`
-  - Вплив: Не критично для роботи додатку
-  - Пріоритет: Low
-  - Рішення: Виправити manifest.json структуру
+### PWA Manifest Issues ✅ FIXED
+- [x] **Manifest warnings** - ВИПРАВЛЕНО (2025-11-28)
+  - `property 'url' ignored, should be within scope` - виправлено
+  - `property 'url' of 'shortcut' not present` - виправлено
+  - Рішення: URL shortcuts тепер в межах scope: `/ToDo-App/?action=new`
 
-### Missing Resources
-- [ ] **favicon.ico 404**
-  - Опис: Браузер шукає /favicon.ico але файл не знайдено
-  - Вплив: Тільки косметично (іконка вкладки)
-  - Пріоритет: Low
-  - Рішення: Додати favicon.ico в root або вказати правильний шлях
+### Missing Resources ✅ FIXED
+- [x] **favicon.ico 404** - ВИПРАВЛЕНО (2025-11-24)
+  - Опис: Додано favicon.ico (36 KB) в root директорію
+  - Файл існує та працює коректно
 
-### Meta Tag Deprecation
-- [ ] **apple-mobile-web-app-capable deprecated**
-  - Опис: Використовується застарілий meta tag
-  - Рішення: Замінити на `<meta name="mobile-web-app-capable" content="yes">`
-  - Пріоритет: Low
+### Meta Tag Deprecation ✅ FIXED
+- [x] **apple-mobile-web-app-capable deprecated** - ВИПРАВЛЕНО (2025-11-28)
+  - Додано новий тег: `<meta name="mobile-web-app-capable" content="yes">`
+  - Старий тег залишений для backwards compatibility
+  - Обидва теги працюють коректно
 
 ---
 
-**Останнє оновлення:** 2025-11-18 (завершено Фази 1-7! Firebase Authentication протестовано і працює на 100%. Multi-device sync готовий. Прогрес: ~90% (72/82 завдань). Залишилось: minor issues та cross-platform тестування!)
+**Останнє оновлення:** 2025-11-28 (завершено Фази 1-7! Firebase Authentication працює. Minor issues виправлено (3/4). Прогрес: ~93% (75/82 завдань). Залишилось: cross-platform тестування та multi-device sync тестування!)
