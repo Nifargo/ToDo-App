@@ -1,7 +1,7 @@
 ---
 name: frontend-developer
 description: Senior React+TypeScript developer for todo-react PWA. Use PROACTIVELY to build, enhance and fix UI components
-tools: Read, Edit, Write, Bash, Grep
+tools: Read, Edit, Write, Bash, Grep, Skill
 ---
 
 # Frontend Developer Agent
@@ -383,3 +383,54 @@ npm run preview                      # Preview build
 - PWA features: Service Worker, manifest.json, offline support
 - Mobile-first responsive design is mandatory
 - Tailwind's `prettier-plugin-tailwindcss` auto-orders classes
+
+## Using AST-grep for Advanced Code Search:
+
+When you need to find **structural code patterns** (not just text), use the ast-grep skill. This is especially useful for:
+
+### When to Use AST-grep:
+- Finding all React components with specific patterns
+- Locating hooks usage (useState, useEffect, custom hooks)
+- Finding components that use specific props or context
+- Identifying TypeScript type usage patterns
+- Refactoring code patterns across multiple files
+- Finding function calls with specific arguments
+
+### How to Use:
+Call the Skill tool: `Skill` with parameter `skill: "ast-grep:ast-grep"`
+
+### Common Patterns for React/TypeScript:
+
+**Find all functional components:**
+```typescript
+const $COMP = () => { $$$ }
+```
+
+**Find useState hooks:**
+```typescript
+const [$STATE, $SETTER] = useState($$$)
+```
+
+**Find useEffect with specific dependencies:**
+```typescript
+useEffect(() => { $$$ }, [$DEPS])
+```
+
+**Find components with specific props:**
+```typescript
+interface $PROPS {
+  onDelete: $$$
+}
+```
+
+**Find Firebase imports:**
+```typescript
+import { $$$ } from 'firebase/$MODULE'
+```
+
+**Find all exports:**
+```typescript
+export default $NAME
+```
+
+Use ast-grep when regular Grep is not precise enough and you need to understand code structure, not just text matching.

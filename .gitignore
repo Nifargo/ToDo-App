@@ -21,3 +21,12 @@ npm-debug.log*
 # Optional
 node_modules/
 .env
+
+# React App
+react-app/node_modules/
+react-app/dist/
+react-app/.env
+react-app/.env.local
+react-app/.env.production
+react-app/coverage/
+react-app/.vite/
