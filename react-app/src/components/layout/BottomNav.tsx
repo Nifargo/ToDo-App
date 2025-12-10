@@ -1,8 +1,8 @@
 import { type FC } from 'react';
-import { Home, CheckSquare, Bell, Settings } from 'lucide-react';
+import { CheckSquare, ClipboardList, Settings } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
-export type NavItem = 'home' | 'tasks' | 'notifications' | 'settings';
+export type NavItem = 'tasks' | 'list' | 'settings';
 
 export interface BottomNavProps {
   activeItem?: NavItem;
@@ -13,18 +13,17 @@ export interface BottomNavProps {
 interface NavItemConfig {
   id: NavItem;
   label: string;
-  icon: typeof Home;
+  icon: typeof CheckSquare;
 }
 
 const navItems: NavItemConfig[] = [
-  { id: 'home', label: 'Home', icon: Home },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'list', label: 'List', icon: ClipboardList },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 const BottomNav: FC<BottomNavProps> = ({
-  activeItem = 'home',
+  activeItem = 'tasks',
   onItemClick,
   className,
 }) => {
@@ -32,9 +31,12 @@ const BottomNav: FC<BottomNavProps> = ({
     <nav
       className={cn(
         'glass-card fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200/50',
-        'px-2 pb-safe md:hidden',
+        'px-2 md:hidden',
         className
       )}
+      style={{
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+      }}
     >
       <div className="mx-auto flex max-w-lg items-center justify-around">
         {navItems.map(({ id, label, icon: Icon }) => {

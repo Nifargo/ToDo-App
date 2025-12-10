@@ -28,7 +28,7 @@ describe('Input Component', () => {
   it('applies error styles when error is present', () => {
     render(<Input error="Error" />);
     const input = screen.getByRole('textbox');
-    expect(input).toHaveClass('border-danger');
+    expect(input.className).toContain('border-danger');
   });
 
   it('handles user input', async () => {

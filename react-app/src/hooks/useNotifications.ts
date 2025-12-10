@@ -1,21 +1,58 @@
-import { useState, useEffect } from 'react';
-import { getToken, onMessage } from 'firebase/messaging';
-import type { Messaging } from 'firebase/messaging';
-import { messaging } from '@/config/firebase';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import {
+  requestFCMToken,
+  deleteFCMToken,
+  setupForegroundMessageHandler,
+  isFCMSupported,
+  requestNotificationPermission,
+} from '@/services/fcmService';
 
+/**
+ * Notification payload from FCM
+ */
+interface NotificationPayload {
+  notification?: {
+    title?: string;
+    body?: string;
+    icon?: string;
+  };
+  data?: Record<string, string>;
+}
+
+/**
+ * Hook result interface
+ */
 interface UseNotificationsResult {
   permission: NotificationPermission;
   token: string | null;
   loading: boolean;
   error: Error | null;
   requestPermission: () => Promise<void>;
+  revokePermission: () => Promise<void>;
   isSupported: boolean;
 }
 
-export function useNotifications(): UseNotificationsResult {
+/**
+ * Custom hook for managing FCM push notifications
+ *
+ * Features:
+ * - Request notification permission
+ * - Manage FCM tokens
+ * - Handle foreground messages with Toast
+ * - Graceful degradation when FCM not available
+ *
+ * @param onNotificationReceived - Optional callback for foreground notifications
+ * @returns Notification state and control functions
+ *
+ * @example
+ * const { permission, requestPermission, isSupported } = useNotifications((payload) => {
+ *   toast.success(payload.notification?.title || 'New notification');
+ * });
+ */
+export function useNotifications(
+  onNotificationReceived?: (payload: NotificationPayload) => void
+): UseNotificationsResult {
   const { user } = useAuth();
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [token, setToken] = useState<string | null>(null);
@@ -23,41 +60,57 @@ export function useNotifications(): UseNotificationsResult {
   const [error, setError] = useState<Error | null>(null);
   const [isSupported, setIsSupported] = useState<boolean>(false);
 
+  // Check if notifications are supported
   useEffect(() => {
-    // Check if notifications are supported
-    const checkSupport = async (): Promise<void> => {
-      const supported = 'Notification' in window && messaging !== null;
-      setIsSupported(supported);
+    const supported = isFCMSupported();
+    setIsSupported(supported);
 
-      if (supported) {
-        setPermission(Notification.permission);
-      }
-    };
-
-    checkSupport();
+    if (supported && typeof Notification !== 'undefined') {
+      setPermission(Notification.permission);
+    }
   }, []);
 
+  // Set up foreground message handler
   useEffect(() => {
-    // Set up foreground message handler
-    if (messaging && user) {
-      const unsubscribe = onMessage(messaging as Messaging, (payload) => {
-        console.log('Foreground message received:', payload);
-
-        if (payload.notification) {
-          const { title, body } = payload.notification;
-          new Notification(title || 'Notification', {
-            body: body || '',
-            icon: '/icons/icon-192.png',
-          });
-        }
-      });
-
-      return () => unsubscribe();
+    if (!isSupported || !user) {
+      return;
     }
-  }, [user]);
 
-  const requestPermission = async (): Promise<void> => {
-    if (!isSupported || !messaging) {
+    const unsubscribe = setupForegroundMessageHandler((payload) => {
+      const typedPayload = payload as NotificationPayload;
+
+      // Call user-provided callback if available
+      if (onNotificationReceived) {
+        onNotificationReceived(typedPayload);
+      } else {
+        // Default behavior: show browser notification
+        if (typedPayload.notification) {
+          const { title, body, icon } = typedPayload.notification;
+
+          // Only show notification if permission is granted
+          if (Notification.permission === 'granted') {
+            new Notification(title || 'Notification', {
+              body: body || '',
+              icon: icon || '/icons/icon-192.png',
+              badge: '/icons/icon-192.png',
+              tag: 'task-notification', // Prevent duplicate notifications
+              requireInteraction: false,
+            });
+          }
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user, isSupported, onNotificationReceived]);
+
+  /**
+   * Request notification permission and FCM token
+   */
+  const requestPermission = useCallback(async (): Promise<void> => {
+    if (!isSupported) {
       setError(new Error('Notifications not supported in this browser'));
       return;
     }
@@ -66,43 +119,52 @@ export function useNotifications(): UseNotificationsResult {
       setLoading(true);
       setError(null);
 
-      const permission = await Notification.requestPermission();
+      // Request browser notification permission
+      const permission = await requestNotificationPermission();
       setPermission(permission);
 
-      if (permission === 'granted') {
-        const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-
-        if (!vapidKey) {
-          throw new Error('VAPID key not configured');
-        }
-
-        const currentToken = await getToken(messaging as Messaging, { vapidKey });
-
-        if (currentToken) {
-          setToken(currentToken);
-
-          // Save token to Firestore for the user
-          if (user) {
-            await setDoc(
-              doc(db, 'users', user.uid),
-              {
-                fcmToken: currentToken,
-                updatedAt: new Date().toISOString(),
-              },
-              { merge: true }
-            );
-          }
-        } else {
-          console.warn('No FCM token available');
-        }
+      if (permission !== 'granted') {
+        throw new Error('Notification permission denied');
       }
+
+      // Request FCM token
+      const result = await requestFCMToken({
+        userId: user?.uid,
+        saveToFirestore: true,
+      });
+
+      if (!result.success) {
+        throw result.error || new Error('Failed to get FCM token');
+      }
+
+      setToken(result.token || null);
     } catch (err) {
       console.error('Error requesting notification permission:', err);
       setError(err as Error);
+      throw err; // Re-throw to allow caller to handle
     } finally {
       setLoading(false);
     }
-  };
+  }, [isSupported, user]);
+
+  /**
+   * Revoke FCM token (call on sign out or disable notifications)
+   */
+  const revokePermission = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      await deleteFCMToken(user?.uid);
+      setToken(null);
+    } catch (err) {
+      console.error('Error revoking FCM token:', err);
+      setError(err as Error);
+      // Don't throw - token revocation should not block operations
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   return {
     permission,
@@ -110,6 +172,7 @@ export function useNotifications(): UseNotificationsResult {
     loading,
     error,
     requestPermission,
+    revokePermission,
     isSupported,
   };
 }

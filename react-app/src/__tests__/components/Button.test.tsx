@@ -25,19 +25,19 @@ describe('Button Component', () => {
   it('applies primary variant styles', () => {
     render(<Button variant="primary">Primary Button</Button>);
     const button = screen.getByRole('button', { name: /primary button/i });
-    expect(button).toHaveClass('bg-primary');
+    expect(button).toHaveClass('bg-white');
   });
 
   it('applies secondary variant styles', () => {
     render(<Button variant="secondary">Secondary Button</Button>);
     const button = screen.getByRole('button', { name: /secondary button/i });
-    expect(button).toHaveClass('bg-secondary');
+    expect(button).toHaveClass('bg-emerald-500');
   });
 
   it('applies danger variant styles', () => {
     render(<Button variant="danger">Danger Button</Button>);
     const button = screen.getByRole('button', { name: /danger button/i });
-    expect(button).toHaveClass('bg-danger');
+    expect(button).toHaveClass('bg-red-500');
   });
 
   it('applies ghost variant styles', () => {

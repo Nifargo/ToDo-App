@@ -1,15 +1,50 @@
+/* Import distinctive Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  /* Light Glass Effects (legacy) */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.15);
+  --glass-blur: 12px;
+
+  /* Dark Glass Effects - Midnight Prism Theme (Lighter Version) */
+  --dark-glass-bg: rgba(71, 85, 105, 0.45);
+  --dark-glass-border: rgba(255, 255, 255, 0.25);
+  --dark-glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  --dark-glass-blur: 16px;
+
+  /* Prismatic Colors */
+  --color-primary: #6366f1;
+  --color-primary-dark: #4f46e5;
+  --color-secondary: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+
+  /* Midnight Prism Palette */
+  --prism-indigo: #6366f1;
+  --prism-violet: #8b5cf6;
+  --prism-fuchsia: #d946ef;
+  --prism-pink: #ec4899;
+  --prism-cyan: #06b6d4;
+
+  /* Transitions */
+  --transition-fast: 150ms ease-in-out;
+  --transition-base: 200ms ease-in-out;
+  --transition-slow: 300ms ease-in-out;
+
+  /* Font */
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light;
-  color: #1f2937;
-  background-color: #ffffff;
+  color-scheme: dark;
+  color: #e2e8f0;
+  background-color: #0f172a;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,12 +52,531 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  /* Prevent horizontal scroll */
+  overflow-x: hidden;
+  /* Support for iOS safe area */
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
+  /* Prevent horizontal scroll */
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height */
+  width: 100%;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Custom animations for sign-in screen */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(200%);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out forwards;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+/* Display font for headlines */
+.font-display {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* Geometric font for modern UI */
+.font-geometric {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Glass morphism effect for modal */
+.glass-morphism {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.85) 100%
+  );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Dark glass morphism for new modal */
+.dark-glass-morphism {
+  background: linear-gradient(
+    145deg,
+    rgba(15, 23, 42, 0.95) 0%,
+    rgba(30, 41, 59, 0.92) 100%
+  );
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+
+/* Prismatic border animation */
+@keyframes prism-rotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.prism-border {
+  position: relative;
+}
+
+.prism-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    #6366f1,
+    #8b5cf6,
+    #ec4899,
+    #f59e0b,
+    #10b981,
+    #06b6d4,
+    #6366f1
+  );
+  background-size: 300% 300%;
+  animation: prism-rotate 6s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+}
+
+/* Scale up animation */
+@keyframes scale-up {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-up {
+  animation: scale-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Glow pulse */
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    filter: blur(20px);
+  }
+  50% {
+    opacity: 0.6;
+    filter: blur(25px);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Flowing border gradient - counter-clockwise color flow animation */
+@keyframes border-color-flow {
+  0% {
+    background-position: 0deg;
+  }
+  100% {
+    background-position: -360deg; /* Counter-clockwise */
+  }
+}
+
+/* 3D Button Container with flowing border */
+.flowing-border {
+  position: relative;
+  padding: 2px;
+  border-radius: 0.75rem;
+  /* Button stays still, no rotation */
+  transform: translateY(0);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Small glow underneath for 3D effect */
+  filter: drop-shadow(0 4px 12px rgba(139, 92, 246, 0.3))
+          drop-shadow(0 8px 24px rgba(99, 102, 241, 0.2));
+}
+
+/* The animated flowing border - COLORS rotate, not the element */
+.flowing-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  /* Use conic gradient that animates its angle, not transform */
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    #ff0080,     /* Pink */
+    #ff00ff,     /* Magenta */
+    #8000ff,     /* Purple */
+    #0080ff,     /* Blue */
+    #00ffff,     /* Cyan */
+    #00ff80,     /* Green-Cyan */
+    #ffff00,     /* Yellow */
+    #ff8000,     /* Orange */
+    #ff0080      /* Back to Pink */
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  /* Animate the CSS custom property */
+  animation: spin-border-angle 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Animation for the angle */
+@keyframes spin-border-angle {
+  from {
+    --border-angle: 0deg;
+  }
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+/* Support for @property if available */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Additional glow layer for more vibrant effect */
+.flowing-border::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--glow-angle, 0deg),
+    rgba(255, 0, 128, 0.4),
+    rgba(255, 0, 255, 0.4),
+    rgba(128, 0, 255, 0.4),
+    rgba(0, 128, 255, 0.4),
+    rgba(0, 255, 255, 0.4),
+    rgba(0, 255, 128, 0.4),
+    rgba(255, 255, 0, 0.4),
+    rgba(255, 128, 0, 0.4),
+    rgba(255, 0, 128, 0.4)
+  );
+  filter: blur(8px);
+  opacity: 0.6;
+  /* Slower animation for glow */
+  animation: spin-glow-angle 5s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes spin-glow-angle {
+  from {
+    --glow-angle: 0deg;
+  }
+  to {
+    --glow-angle: 360deg;
+  }
+}
+
+@property --glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* 3D Button with depth */
+.btn-3d {
+  position: relative;
+  /* 3D depth effect with layered shadows */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.25),
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    0 8px 16px rgba(0, 0, 0, 0.15),
+    /* Light from bottom for 3D effect */
+    0 12px 24px rgba(99, 102, 241, 0.2),
+    /* Inner highlight for depth */
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+  /* 3D transform */
+  transform: translateZ(20px);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Hover state - lift button slightly */
+.flowing-border:hover {
+  transform: translateY(-2px) translateZ(0);
+  filter: drop-shadow(0 6px 16px rgba(139, 92, 246, 0.4))
+          drop-shadow(0 12px 32px rgba(99, 102, 241, 0.3));
+}
+
+.flowing-border:hover .btn-3d {
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    0 8px 16px rgba(0, 0, 0, 0.2),
+    0 12px 24px rgba(0, 0, 0, 0.15),
+    0 16px 32px rgba(99, 102, 241, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Active state - press down */
+.flowing-border:active {
+  transform: translateY(1px) translateZ(0);
+  filter: drop-shadow(0 2px 8px rgba(139, 92, 246, 0.3))
+          drop-shadow(0 4px 16px rgba(99, 102, 241, 0.2));
+}
+
+.flowing-border:active .btn-3d {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 6px 12px rgba(99, 102, 241, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* =========================
+   MIDNIGHT PRISM THEME UTILITIES
+   ========================= */
+
+/* Dark glass card - task cards, containers */
+.dark-glass-card {
+  background: var(--dark-glass-bg);
+  backdrop-filter: blur(var(--dark-glass-blur));
+  -webkit-backdrop-filter: blur(var(--dark-glass-blur));
+  border: 1px solid var(--dark-glass-border);
+  box-shadow: var(--dark-glass-shadow);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark-glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.6),
+    0 0 24px 0 rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Holographic border effect for task cards */
+.holographic-border {
+  position: relative;
+}
+
+.holographic-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--prism-indigo),
+    var(--prism-violet),
+    var(--prism-fuchsia),
+    var(--prism-pink),
+    var(--prism-cyan),
+    var(--prism-indigo)
+  );
+  background-size: 200% 200%;
+  animation: holographic-shift 4s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.holographic-border:hover::before {
+  opacity: 0.6;
+}
+
+@keyframes holographic-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Staggered fade-in animation for lists */
+.fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+.slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Glow effect for interactive elements */
+.glow-on-hover {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.glow-on-hover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at center,
+    rgba(99, 102, 241, 0.3),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.glow-on-hover:hover::after {
+  opacity: 1;
+}
+
+/* Holographic text effect */
+.holographic-text {
+  background: linear-gradient(
+    135deg,
+    var(--prism-indigo),
+    var(--prism-violet),
+    var(--prism-fuchsia),
+    var(--prism-pink),
+    var(--prism-cyan)
+  );
+  background-size: 200% 200%;
+  animation: holographic-shift 4s ease infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Ambient orbs for background */
+.ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  animation: float 8s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(-30px, 30px) scale(0.9);
+  }
+}
+
+/* Scale in animation for checkboxes */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

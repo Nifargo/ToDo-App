@@ -24,9 +24,9 @@ interface UseFirestoreResult<T> {
   loading: boolean;
   error: Error | null;
   create: (data: WithFieldValue<DocumentData>) => Promise<string>;
-  update: (id: string, data: UpdateData<DocumentData>) => Promise<void>;
-  remove: (id: string) => Promise<void>;
-  getById: (id: string) => Promise<T | null>;
+  update: (id: string | number, data: UpdateData<DocumentData>) => Promise<void>;
+  remove: (id: string | number) => Promise<void>;
+  getById: (id: string | number) => Promise<T | null>;
 }
 
 export function useFirestore<T extends { id: string }>(
@@ -64,11 +64,12 @@ export function useFirestore<T extends { id: string }>(
                 id: doc.id,
                 ...doc.data(),
               })) as T[];
+
               setData(items);
               setLoading(false);
             },
             (err) => {
-              console.error('Firestore snapshot error:', err);
+              console.error('[useFirestore] Snapshot error:', err);
               setError(err as Error);
               setLoading(false);
             }
@@ -80,6 +81,7 @@ export function useFirestore<T extends { id: string }>(
             id: doc.id,
             ...doc.data(),
           })) as T[];
+
           setData(items);
           setLoading(false);
         }
@@ -114,32 +116,73 @@ export function useFirestore<T extends { id: string }>(
     }
   };
 
-  const update = async (id: string, updateData: UpdateData<DocumentData>): Promise<void> => {
+  const update = async (id: string | number, updateData: UpdateData<DocumentData>): Promise<void> => {
     try {
-      const docRef = doc(db, collectionName, id);
-      await updateDoc(docRef, {
-        ...updateData,
+      // Convert number ID to string for backward compatibility with Vanilla JS version
+      const idString = typeof id === 'number' ? id.toString() : id;
+
+      if (!idString || typeof idString !== 'string' || idString.trim() === '') {
+        const errorMsg = `Invalid document ID: "${idString}" (original type: ${typeof id})`;
+        console.error('[useFirestore] Update validation failed:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      if (!collectionName || typeof collectionName !== 'string') {
+        const errorMsg = `Invalid collection name: "${collectionName}"`;
+        console.error('[useFirestore] Update validation failed:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      const docRef = doc(db, collectionName, idString);
+
+      // Use Object.assign to avoid issues with spread operator and Firebase UpdateData type
+      const updates = Object.assign({}, updateData, {
         updatedAt: new Date().toISOString(),
       });
+
+      await updateDoc(docRef, updates);
     } catch (err) {
-      console.error('Firestore update error:', err);
+      console.error('[useFirestore] Update error:', {
+        error: err,
+        id,
+        collectionName,
+        updateData,
+      });
       throw err;
     }
   };
 
-  const remove = async (id: string): Promise<void> => {
+  const remove = async (id: string | number): Promise<void> => {
     try {
-      const docRef = doc(db, collectionName, id);
+      // Convert number ID to string for backward compatibility with Vanilla JS version
+      const idString = typeof id === 'number' ? id.toString() : id;
+
+      if (!idString || typeof idString !== 'string' || idString.trim() === '') {
+        const errorMsg = `Invalid document ID: "${idString}" (original type: ${typeof id})`;
+        console.error('[useFirestore] Remove validation failed:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      const docRef = doc(db, collectionName, idString);
       await deleteDoc(docRef);
     } catch (err) {
-      console.error('Firestore delete error:', err);
+      console.error('[useFirestore] Delete error:', err);
       throw err;
     }
   };
 
-  const getById = async (id: string): Promise<T | null> => {
+  const getById = async (id: string | number): Promise<T | null> => {
     try {
-      const docRef = doc(db, collectionName, id);
+      // Convert number ID to string for backward compatibility with Vanilla JS version
+      const idString = typeof id === 'number' ? id.toString() : id;
+
+      if (!idString || typeof idString !== 'string' || idString.trim() === '') {
+        const errorMsg = `Invalid document ID: "${idString}" (original type: ${typeof id})`;
+        console.error('[useFirestore] GetById validation failed:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      const docRef = doc(db, collectionName, idString);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
@@ -147,7 +190,7 @@ export function useFirestore<T extends { id: string }>(
       }
       return null;
     } catch (err) {
-      console.error('Firestore getById error:', err);
+      console.error('[useFirestore] GetById error:', err);
       throw err;
     }
   };

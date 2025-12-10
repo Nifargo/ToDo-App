@@ -25,6 +25,7 @@ node_modules/
 # React App
 react-app/node_modules/
 react-app/dist/
+react-app/dev-dist/
 react-app/.env
 react-app/.env.local
 react-app/.env.production

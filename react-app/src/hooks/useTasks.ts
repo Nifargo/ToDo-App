@@ -71,13 +71,16 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     mutationFn: async (data: CreateTaskInput) => {
       if (!user) throw new Error('User not authenticated');
 
-      await create({
+      const newTaskData = {
         text: data.text,
         completed: false,
         dueDate: data.dueDate || null,
         userId: user.uid,
         subtasks: data.subtasks || [],
-      });
+      };
+
+      const createdId = await create(newTaskData);
+      return createdId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -113,10 +116,15 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     tasks: tasks || [],
     loading,
     error,
-    createTask: createMutation.mutateAsync,
-    updateTask: (id: string, data: UpdateTaskInput) =>
-      updateMutation.mutateAsync({ id, data }),
-    deleteTask: deleteMutation.mutateAsync,
+    createTask: async (data: CreateTaskInput) => {
+      await createMutation.mutateAsync(data);
+    },
+    updateTask: async (id: string, data: UpdateTaskInput) => {
+      await updateMutation.mutateAsync({ id, data });
+    },
+    deleteTask: async (id: string) => {
+      await deleteMutation.mutateAsync(id);
+    },
     toggleComplete,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,

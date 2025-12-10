@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
+      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png', 'firebase-messaging-sw.js'],
       manifest: {
         name: 'My Tasks',
         short_name: 'Tasks',
@@ -32,6 +32,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Don't precache the FCM service worker - it needs to be registered separately
+        navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
@@ -44,7 +46,24 @@ export default defineConfig({
               },
             },
           },
+          {
+            urlPattern: /^https:\/\/www\.gstatic\.com\/firebasejs\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'firebase-sdk-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+            },
+          },
         ],
+      },
+      // Allow the FCM service worker to be served from public directory
+      injectRegister: 'auto',
+      devOptions: {
+        enabled: true,
+        type: 'module',
       },
     }),
   ],
@@ -56,5 +75,41 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core libraries
+          'react-vendor': ['react', 'react-dom'],
+
+          // Firebase - separate chunk for large library
+          'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+
+          // React Query and state management
+          'query-vendor': ['@tanstack/react-query', 'zustand'],
+
+          // UI libraries
+          'ui-vendor': ['lucide-react', 'react-swipeable'],
+
+          // Date utilities
+          'date-vendor': ['date-fns'],
+
+          // Utility libraries
+          'utils-vendor': ['clsx', 'tailwind-merge'],
+        },
+      },
+    },
+    // Increase chunk size warning limit to 600 KB
+    chunkSizeWarningLimit: 600,
+
+    // Enable minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.logs in production
+        drop_debugger: true,
+      },
+    },
   },
 })

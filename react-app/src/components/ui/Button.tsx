@@ -26,9 +26,9 @@ const Button: FC<ButtonProps> = ({
   const baseStyles = 'glass-button inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles: Record<ButtonVariant, string> = {
-    primary: 'bg-primary text-white hover:bg-primary-dark border-primary shadow-liquid hover:shadow-liquid-hover',
-    secondary: 'bg-secondary text-white hover:bg-emerald-600 border-secondary',
-    danger: 'bg-danger text-white hover:bg-red-600 border-danger',
+    primary: 'bg-white text-gray-800 hover:bg-gray-50 border-white/20 shadow-lg hover:shadow-xl',
+    secondary: 'bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500 shadow-lg',
+    danger: 'bg-red-500 text-white hover:bg-red-600 border-red-500 shadow-lg',
     ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 border-transparent',
   };
 

@@ -17,7 +17,7 @@ const Checkbox: FC<CheckboxProps> = ({
   const checkboxId = id || generatedId;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn("flex items-center gap-2", className)}>
       <div className="relative inline-flex items-center">
         <input
           type="checkbox"
@@ -30,12 +30,11 @@ const Checkbox: FC<CheckboxProps> = ({
           htmlFor={checkboxId}
           className={cn(
             'flex h-5 w-5 cursor-pointer items-center justify-center rounded border-2',
-            'border-gray-300 bg-white transition-all duration-200',
-            'peer-checked:border-primary peer-checked:bg-primary',
-            'peer-focus:ring-2 peer-focus:ring-primary/20 peer-focus:ring-offset-2',
+            'border-white/20 bg-white/5 backdrop-blur-sm transition-all duration-200',
+            'peer-checked:border-indigo-500 peer-checked:bg-gradient-to-br peer-checked:from-indigo-600 peer-checked:to-violet-600',
+            'peer-focus:ring-2 peer-focus:ring-indigo-500/30',
             'peer-disabled:cursor-not-allowed peer-disabled:opacity-50',
-            'hover:border-primary',
-            className
+            'hover:border-indigo-500/50'
           )}
         >
           {checked && (
@@ -50,7 +49,7 @@ const Checkbox: FC<CheckboxProps> = ({
       {label && (
         <label
           htmlFor={checkboxId}
-          className="cursor-pointer text-sm font-medium text-gray-700 select-none"
+          className="font-geometric cursor-pointer text-sm font-medium text-slate-300 select-none"
         >
           {label}
         </label>

@@ -18,6 +18,9 @@ export default {
         'liquid': '0 8px 32px 0 rgba(99, 102, 241, 0.15)',
         'liquid-hover': '0 12px 48px 0 rgba(99, 102, 241, 0.25)',
       },
+      animation: {
+        'spin-slow': 'spin 3s linear infinite',
+      },
     },
   },
   plugins: [],

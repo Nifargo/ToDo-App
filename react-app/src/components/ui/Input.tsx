@@ -1,4 +1,4 @@
-import { type FC, type InputHTMLAttributes, type ReactNode, useId } from 'react';
+import { forwardRef, type InputHTMLAttributes, type ReactNode, useId } from 'react';
 import { cn } from '@/utils/cn';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -9,7 +9,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   fullWidth?: boolean;
 }
 
-const Input: FC<InputProps> = ({
+const Input = forwardRef<HTMLInputElement, InputProps>(({
   label,
   error,
   leftIcon,
@@ -18,7 +18,7 @@ const Input: FC<InputProps> = ({
   className,
   id,
   ...props
-}) => {
+}, ref) => {
   const generatedId = useId();
   const inputId = id || generatedId;
 
@@ -27,7 +27,7 @@ const Input: FC<InputProps> = ({
       {label && (
         <label
           htmlFor={inputId}
-          className="text-sm font-medium text-gray-700"
+          className="font-geometric text-sm font-medium text-slate-300"
         >
           {label}
         </label>
@@ -35,18 +35,20 @@ const Input: FC<InputProps> = ({
 
       <div className="relative">
         {leftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
             {leftIcon}
           </div>
         )}
 
         <input
+          ref={ref}
           id={inputId}
           className={cn(
-            'glass-input w-full text-gray-900 placeholder:text-gray-400',
-            'focus:border-primary focus:ring-2 focus:ring-primary/20',
-            'disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-500',
-            error && 'border-danger focus:border-danger focus:ring-danger/20',
+            'w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-slate-500 backdrop-blur-xl',
+            'transition-all duration-200',
+            'focus:border-indigo-500/50 focus:bg-white/10 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none',
+            'disabled:bg-white/5 disabled:cursor-not-allowed disabled:text-slate-600',
+            error && 'border-danger/50 focus:border-danger/50 focus:ring-danger/20',
             leftIcon && 'pl-10',
             rightIcon && 'pr-10',
             className
@@ -55,7 +57,7 @@ const Input: FC<InputProps> = ({
         />
 
         {rightIcon && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
             {rightIcon}
           </div>
         )}
@@ -68,6 +70,8 @@ const Input: FC<InputProps> = ({
       )}
     </div>
   );
-};
+});
+
+Input.displayName = 'Input';
 
 export default Input;

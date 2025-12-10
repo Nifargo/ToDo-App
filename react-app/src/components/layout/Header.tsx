@@ -16,7 +16,7 @@ const Header: FC<HeaderProps> = ({
   return (
     <header
       className={cn(
-        'glass-card sticky top-0 z-40 border-b border-gray-200/50',
+        'sticky top-0 z-40 bg-gradient-to-r from-indigo-900/70 to-purple-900/70 backdrop-blur-xl border-b border-white/20',
         'px-4 py-3 md:px-6',
         className
       )}
@@ -24,14 +24,14 @@ const Header: FC<HeaderProps> = ({
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         {/* Logo & App Name */}
         <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary shadow-liquid">
+          <div className="prism-border flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600">
             <CheckSquare className="h-6 w-6 text-white" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="font-geometric text-xl font-bold text-white">
               {import.meta.env.VITE_APP_NAME || 'My Tasks'}
             </h1>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-300">
               Stay organized, stay productive
             </p>
           </div>
@@ -42,7 +42,7 @@ const Header: FC<HeaderProps> = ({
           {showMenu && onMenuClick && (
             <button
               onClick={onMenuClick}
-              className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
+              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Open menu"
             >
               <Menu className="h-6 w-6" />
@@ -51,7 +51,7 @@ const Header: FC<HeaderProps> = ({
 
           {/* Placeholder for user profile */}
           <div className="hidden md:flex items-center gap-2">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-secondary" />
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/30" />
           </div>
         </div>
       </div>

@@ -28,10 +28,10 @@
 
 /* Glass Button */
 .glass-button {
-  background: var(--glass-bg);
+  /* background removed - use Tailwind bg-* classes instead */
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: var(--glass-shadow);
   border-radius: 0.5rem;
   padding: 0.5rem 1rem;
@@ -40,7 +40,7 @@
 }
 
 .glass-button:hover {
-  background: rgba(255, 255, 255, 0.9);
+  /* background removed - Tailwind hover:bg-* will work */
   transform: translateY(-1px);
   box-shadow: 0 8px 24px 0 rgba(99, 102, 241, 0.2);
 }
