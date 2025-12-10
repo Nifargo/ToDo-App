@@ -25,7 +25,7 @@ describe('useAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: no user logged in
-    mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+    mockOnAuthStateChanged.mockImplementation((_auth, callback) => {
       callback(null); // No user
       return vi.fn(); // Unsubscribe function
     });
@@ -91,7 +91,7 @@ describe('useAuth', () => {
         photoURL: 'https://example.com/photo.jpg',
       };
 
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+      mockOnAuthStateChanged.mockImplementation((_auth, callback) => {
         callback(mockFirebaseUser);
         return vi.fn();
       });
@@ -121,7 +121,7 @@ describe('useAuth', () => {
     it('should handle auth state change errors', async () => {
       const mockError = new Error('Auth state error');
 
-      mockOnAuthStateChanged.mockImplementation((auth, callback, errorCallback) => {
+      mockOnAuthStateChanged.mockImplementation((_auth, _callback, errorCallback) => {
         errorCallback(mockError);
         return vi.fn();
       });

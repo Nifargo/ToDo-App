@@ -57,7 +57,7 @@ describe('useNotifications', () => {
     vi.clearAllMocks();
 
     // Setup default mocks
-    mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+    mockOnAuthStateChanged.mockImplementation((_auth, callback) => {
       callback({
         uid: 'test-user-123',
         email: 'test@example.com',
@@ -71,7 +71,7 @@ describe('useNotifications', () => {
     mockSetupForegroundMessageHandler.mockReturnValue(vi.fn()); // Return unsubscribe function
 
     // Mock Notification API
-    Object.defineProperty(global, 'Notification', {
+    Object.defineProperty(globalThis, 'Notification', {
       writable: true,
       value: mockNotification,
     });
@@ -179,7 +179,7 @@ describe('useNotifications', () => {
     });
 
     it('should not set up handler when user is not authenticated', async () => {
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+      mockOnAuthStateChanged.mockImplementation((_auth, callback) => {
         callback(null); // No user
         return vi.fn();
       });
@@ -504,7 +504,7 @@ describe('useNotifications', () => {
 
   describe('Edge Cases', () => {
     it('should handle undefined user', async () => {
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+      mockOnAuthStateChanged.mockImplementation((_auth, callback) => {
         callback(null);
         return vi.fn();
       });
