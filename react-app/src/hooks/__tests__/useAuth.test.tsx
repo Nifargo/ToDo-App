@@ -61,7 +61,7 @@ describe('useAuth', () => {
 
   describe('Initial State', () => {
     it('should start with loading true', () => {
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
+      mockOnAuthStateChanged.mockImplementation(() => {
         // Don't call callback immediately
         return vi.fn();
       });

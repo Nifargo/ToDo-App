@@ -244,8 +244,8 @@ describe('useNotifications', () => {
       await act(async () => {
         try {
           await result.current.requestPermission();
-        } catch (error: any) {
-          expect(error.message).toContain('Notification permission denied');
+        } catch (err) {
+          expect((err as Error).message).toContain('Notification permission denied');
         }
       });
 
@@ -269,8 +269,8 @@ describe('useNotifications', () => {
       await act(async () => {
         try {
           await result.current.requestPermission();
-        } catch (error: any) {
-          expect(error.message).toContain('Failed to get FCM token');
+        } catch (err) {
+          expect((err as Error).message).toContain('Failed to get FCM token');
         }
       });
 
@@ -327,7 +327,7 @@ describe('useNotifications', () => {
       await act(async () => {
         try {
           await result.current.requestPermission();
-        } catch (error) {
+        } catch {
           // Error expected
         }
       });
@@ -453,7 +453,7 @@ describe('useNotifications', () => {
       await act(async () => {
         try {
           await result.current.requestPermission();
-        } catch (error) {
+        } catch {
           // Error expected
         }
       });
