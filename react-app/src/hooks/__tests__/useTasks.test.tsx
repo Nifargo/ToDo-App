@@ -16,7 +16,7 @@ vi.mock('@/config/firebase', () => ({
 vi.mock('firebase/auth', () => ({
   signInWithPopup: vi.fn(),
   signOut: vi.fn(),
-  onAuthStateChanged: vi.fn((auth, callback) => {
+  onAuthStateChanged: vi.fn((_auth, callback) => {
     // Mock authenticated user
     callback({
       uid: 'test-user-123',
@@ -187,8 +187,8 @@ describe('useTasks', () => {
       const newTask: CreateTaskInput = {
         text: 'Task with subtasks',
         subtasks: [
-          { text: 'Subtask 1', completed: false },
-          { text: 'Subtask 2', completed: false },
+          { id: '1', text: 'Subtask 1', completed: false },
+          { id: '2', text: 'Subtask 2', completed: false },
         ],
       };
 
@@ -200,8 +200,8 @@ describe('useTasks', () => {
         expect.objectContaining({
           text: 'Task with subtasks',
           subtasks: [
-            { text: 'Subtask 1', completed: false },
-            { text: 'Subtask 2', completed: false },
+            { id: '1', text: 'Subtask 1', completed: false },
+            { id: '2', text: 'Subtask 2', completed: false },
           ],
         })
       );
@@ -292,8 +292,8 @@ describe('useTasks', () => {
       const { result } = renderHook(() => useTasks(), { wrapper });
 
       const subtasks = [
-        { text: 'Subtask 1', completed: true },
-        { text: 'Subtask 2', completed: false },
+        { id: '1', text: 'Subtask 1', completed: true },
+        { id: '2', text: 'Subtask 2', completed: false },
       ];
 
       await act(async () => {
