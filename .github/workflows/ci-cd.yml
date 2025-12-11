@@ -1,0 +1,82 @@
+name: CI/CD - Test & Deploy
+
+on:
+  push:
+    branches: [main, migration/react]
+  pull_request:
+    branches: [main, migration/react]
+
+jobs:
+  test:
+    name: Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Завантажити код з GitHub
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Встановити Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: react-app/package-lock.json
+
+      # 3. Встановити залежності
+      - name: Install dependencies
+        run: cd react-app && npm ci
+
+      # 4. TypeScript перевірка
+      - name: TypeScript check
+        run: cd react-app && npm run type-check
+
+      # 5. ESLint перевірка
+      - name: Run ESLint
+        run: cd react-app && npm run lint
+
+      # 6. Запустити тести
+      - name: Run tests
+        run: cd react-app && npm run test
+
+      # 7. Build проєкту
+      - name: Build project
+        run: cd react-app && npm run build
+
+      # 8. Завантажити build артефакти (для deploy job)
+      - name: Upload build artifacts
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-app-build
+          path: react-app/dist
+          retention-days: 1
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    # Дозвіл на запис для GitHub Pages
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      # 1. Завантажити build артефакти
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: react-app-build
+          path: dist
+
+      # 2. Deploy на GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          cname: false
