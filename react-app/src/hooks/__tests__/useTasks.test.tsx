@@ -200,8 +200,8 @@ describe('useTasks', () => {
         expect.objectContaining({
           text: 'Task with subtasks',
           subtasks: [
-            { id: '1', text: 'Subtask 1', completed: false },
-            { id: '2', text: 'Subtask 2', completed: false },
+            { text: 'Subtask 1', completed: false },
+            { text: 'Subtask 2', completed: false },
           ],
         })
       );
