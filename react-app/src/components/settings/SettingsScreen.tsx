@@ -43,10 +43,6 @@ const SettingsScreen: FC<SettingsScreenProps> = ({ onSignOut, onShowToast }) => 
     onShowToast('error', message);
   };
 
-  if (!user) {
-    return null;
-  }
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-800 to-indigo-900">
       {/* Ambient Background Orbs */}
@@ -74,92 +70,119 @@ const SettingsScreen: FC<SettingsScreenProps> = ({ onSignOut, onShowToast }) => 
               Settings
             </h1>
             <p className="text-sm font-medium text-white/70 md:text-base">
-              Manage your account and preferences
+              {user ? 'Manage your account and preferences' : 'App settings and information'}
             </p>
           </section>
 
-          {/* Profile Section */}
-          <section
-            className="mb-6 animate-fade-in"
-            style={{ animationDelay: '0.1s' }}
-          >
-            <div className="holographic-border rounded-xl border-2 border-violet-300/70 bg-gradient-to-br from-indigo-500/95 via-purple-500/95 to-fuchsia-600/95 p-6 shadow-2xl shadow-indigo-500/60 backdrop-blur-2xl">
-              <div className="mb-4 flex items-center gap-2">
-                <User className="h-5 w-5 text-white" />
-                <h2 className="font-geometric text-lg font-semibold text-white drop-shadow-lg">
-                  Profile
-                </h2>
+          {/* Guest Notice - Only show for guests */}
+          {!user && (
+            <section
+              className="mb-6 animate-fade-in"
+              style={{ animationDelay: '0.1s' }}
+            >
+              <div className="holographic-border rounded-xl border-2 border-indigo-300/70 bg-gradient-to-br from-indigo-500/95 via-purple-500/95 to-fuchsia-600/95 p-6 shadow-2xl shadow-indigo-500/60 backdrop-blur-2xl">
+                <div className="mb-3 flex items-center gap-2">
+                  <User className="h-5 w-5 text-white" />
+                  <h2 className="font-geometric text-lg font-semibold text-white drop-shadow-lg">
+                    Guest Mode
+                  </h2>
+                </div>
+                <p className="mb-3 text-sm text-white/80">
+                  You're using the app as a guest. Your tasks are saved locally on this device.
+                </p>
+                <p className="text-sm text-white/70">
+                  Sign in to unlock: cross-device sync, notifications, and cloud backup.
+                </p>
               </div>
+            </section>
+          )}
 
-              <div className="flex items-center gap-4">
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || 'User'}
-                    className="h-16 w-16 flex-shrink-0 rounded-full border-4 border-white/30 shadow-lg"
+          {/* Profile Section - Only show for authenticated users */}
+          {user && (
+            <section
+              className="mb-6 animate-fade-in"
+              style={{ animationDelay: '0.1s' }}
+            >
+              <div className="holographic-border rounded-xl border-2 border-violet-300/70 bg-gradient-to-br from-indigo-500/95 via-purple-500/95 to-fuchsia-600/95 p-6 shadow-2xl shadow-indigo-500/60 backdrop-blur-2xl">
+                <div className="mb-4 flex items-center gap-2">
+                  <User className="h-5 w-5 text-white" />
+                  <h2 className="font-geometric text-lg font-semibold text-white drop-shadow-lg">
+                    Profile
+                  </h2>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName || 'User'}
+                      className="h-16 w-16 flex-shrink-0 rounded-full border-4 border-white/30 shadow-lg"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border-4 border-white/30 bg-white/10 shadow-lg">
+                      <User className="h-8 w-8 text-white" />
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-geometric truncate text-xl font-bold text-white drop-shadow-lg">
+                      {user.displayName || 'User'}
+                    </h3>
+                    <p className="truncate text-sm text-white/80">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Notifications Section - Only show for authenticated users */}
+          {user && (
+            <section
+              className="mb-6 animate-fade-in"
+              style={{ animationDelay: '0.2s' }}
+            >
+              {showNotificationSettings ? (
+                <div className="space-y-4">
+                  <button
+                    onClick={() => setShowNotificationSettings(false)}
+                    className="flex items-center gap-2 text-sm font-medium text-white/80 transition-colors hover:text-white"
+                  >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
+                    Back to Settings
+                  </button>
+                  <NotificationSettings
+                    onSuccess={handleNotificationSuccess}
+                    onError={handleNotificationError}
+                    onClose={() => setShowNotificationSettings(false)}
                   />
-                ) : (
-                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border-4 border-white/30 bg-white/10 shadow-lg">
-                    <User className="h-8 w-8 text-white" />
-                  </div>
-                )}
-
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-geometric truncate text-xl font-bold text-white drop-shadow-lg">
-                    {user.displayName || 'User'}
-                  </h3>
-                  <p className="truncate text-sm text-white/80">
-                    {user.email}
-                  </p>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Notifications Section */}
-          <section
-            className="mb-6 animate-fade-in"
-            style={{ animationDelay: '0.2s' }}
-          >
-            {showNotificationSettings ? (
-              <div className="space-y-4">
+              ) : (
                 <button
-                  onClick={() => setShowNotificationSettings(false)}
-                  className="flex items-center gap-2 text-sm font-medium text-white/80 transition-colors hover:text-white"
+                  onClick={() => setShowNotificationSettings(true)}
+                  className="holographic-border group w-full rounded-xl border-2 border-violet-300/70 bg-gradient-to-br from-indigo-500/95 via-purple-500/95 to-fuchsia-600/95 p-6 shadow-2xl shadow-indigo-500/60 backdrop-blur-2xl transition-all hover:scale-[1.02] hover:shadow-indigo-500/80"
                 >
-                  <ChevronRight className="h-4 w-4 rotate-180" />
-                  Back to Settings
-                </button>
-                <NotificationSettings
-                  onSuccess={handleNotificationSuccess}
-                  onError={handleNotificationError}
-                  onClose={() => setShowNotificationSettings(false)}
-                />
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowNotificationSettings(true)}
-                className="holographic-border group w-full rounded-xl border-2 border-violet-300/70 bg-gradient-to-br from-indigo-500/95 via-purple-500/95 to-fuchsia-600/95 p-6 shadow-2xl shadow-indigo-500/60 backdrop-blur-2xl transition-all hover:scale-[1.02] hover:shadow-indigo-500/80"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm">
-                      <Bell className="h-5 w-5 text-white" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm">
+                        <Bell className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-geometric text-base font-semibold text-white drop-shadow-lg">
+                          Notifications
+                        </h3>
+                        <p className="text-sm text-white/70">
+                          Manage your notification preferences
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <h3 className="font-geometric text-base font-semibold text-white drop-shadow-lg">
-                        Notifications
-                      </h3>
-                      <p className="text-sm text-white/70">
-                        Manage your notification preferences
-                      </p>
-                    </div>
+                    <ChevronRight className="h-5 w-5 text-white/50 transition-transform group-hover:translate-x-1" />
                   </div>
-                  <ChevronRight className="h-5 w-5 text-white/50 transition-transform group-hover:translate-x-1" />
-                </div>
-              </button>
-            )}
-          </section>
+                </button>
+              )}
+            </section>
+          )}
 
           {/* App Info Section */}
           <section
@@ -191,32 +214,34 @@ const SettingsScreen: FC<SettingsScreenProps> = ({ onSignOut, onShowToast }) => 
             </div>
           </section>
 
-          {/* Account Actions Section */}
-          <section
-            className="animate-fade-in"
-            style={{ animationDelay: '0.4s' }}
-          >
-            <div className="holographic-border rounded-xl border-2 border-red-300/70 bg-gradient-to-br from-red-500/95 via-rose-500/95 to-red-600/95 p-6 shadow-2xl shadow-red-500/60 backdrop-blur-2xl">
-              <div className="mb-4 flex items-center gap-2">
-                <LogOut className="h-5 w-5 text-white" />
-                <h2 className="font-geometric text-lg font-semibold text-white drop-shadow-lg">
-                  Account
-                </h2>
-              </div>
+          {/* Account Actions Section - Only show for authenticated users */}
+          {user && (
+            <section
+              className="animate-fade-in"
+              style={{ animationDelay: '0.4s' }}
+            >
+              <div className="holographic-border rounded-xl border-2 border-red-300/70 bg-gradient-to-br from-red-500/95 via-rose-500/95 to-red-600/95 p-6 shadow-2xl shadow-red-500/60 backdrop-blur-2xl">
+                <div className="mb-4 flex items-center gap-2">
+                  <LogOut className="h-5 w-5 text-white" />
+                  <h2 className="font-geometric text-lg font-semibold text-white drop-shadow-lg">
+                    Account
+                  </h2>
+                </div>
 
-              <Button
-                variant="danger"
-                size="lg"
-                onClick={handleSignOut}
-                loading={signingOut}
-                fullWidth
-                className="border border-white/30 bg-white text-red-700 shadow-lg hover:bg-white/90"
-              >
-                <LogOut className="h-5 w-5" />
-                Sign Out
-              </Button>
-            </div>
-          </section>
+                <Button
+                  variant="danger"
+                  size="lg"
+                  onClick={handleSignOut}
+                  loading={signingOut}
+                  fullWidth
+                  className="border border-white/30 bg-white text-red-700 shadow-lg hover:bg-white/90"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Sign Out
+                </Button>
+              </div>
+            </section>
+          )}
         </Container>
       </main>
     </div>
