@@ -3,9 +3,9 @@ import { where } from 'firebase/firestore';
 import { useFirestore } from './useFirestore';
 import { useAuth } from './useAuth';
 import { useLocalStorage } from './useLocalStorage';
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import type { Task, CreateTaskInput, UpdateTaskInput, TaskFilter } from '@/types';
-import { startOfDay, endOfDay, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { startOfDay, endOfDay, startOfMonth, endOfMonth, isWithinInterval, differenceInHours } from 'date-fns';
 
 interface UseTasksResult {
   tasks: Task[];
@@ -186,8 +186,48 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
   };
 
   const toggleComplete = async (id: string, completed: boolean): Promise<void> => {
-    await updateTask(id, { completed });
+    const updateData: UpdateTaskInput = {
+      completed,
+      completedAt: completed ? new Date().toISOString() : undefined,
+    };
+    await updateTask(id, updateData);
   };
+
+  // Cleanup old completed tasks (older than 8 hours)
+  const cleanupOldCompletedTasks = useCallback(async () => {
+    const now = new Date();
+    const HOURS_BEFORE_DELETE = 8;
+
+    if (user) {
+      // Firebase: find and delete old completed tasks
+      const tasksToDelete = (firebaseTasks || []).filter(task => {
+        if (!task.completed || !task.completedAt) return false;
+        const completedDate = new Date(task.completedAt);
+        return differenceInHours(now, completedDate) >= HOURS_BEFORE_DELETE;
+      });
+
+      for (const task of tasksToDelete) {
+        await deleteTask(task.id);
+      }
+    } else {
+      // LocalStorage: filter out old completed tasks
+      setLocalTasks(prev => prev.filter(task => {
+        if (!task.completed || !task.completedAt) return true;
+        const completedDate = new Date(task.completedAt);
+        return differenceInHours(now, completedDate) < HOURS_BEFORE_DELETE;
+      }));
+    }
+  }, [user, firebaseTasks, deleteTask, setLocalTasks]);
+
+  // Run cleanup on mount and every hour
+  useEffect(() => {
+    cleanupOldCompletedTasks();
+
+    // Run cleanup every hour
+    const intervalId = setInterval(cleanupOldCompletedTasks, 60 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [cleanupOldCompletedTasks]);
 
   return {
     tasks: user ? (firebaseTasks || []) : filteredLocalTasks,
