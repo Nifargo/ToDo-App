@@ -44,7 +44,7 @@ const SettingsScreen: FC<SettingsScreenProps> = ({ onSignOut, onShowToast }) => 
   };
 
   return (
-    <div className="relative min-h-screen min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-gradient-to-br from-indigo-900 via-purple-800 to-indigo-900">
+    <div className="relative h-full w-full overflow-x-hidden overflow-y-auto bg-gradient-to-br from-indigo-900 via-purple-800 to-indigo-900">
       {/* Ambient Background Orbs */}
       <div className="absolute inset-0 overflow-hidden">
         <div
