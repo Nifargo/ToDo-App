@@ -580,3 +580,21 @@ body {
 .animate-scale-in {
   animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Fix Safari iOS time input alignment */
+input[type="time"] {
+  text-align: left !important;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Reset Safari time input styling */
+input[type="time"]::-webkit-datetime-edit {
+  text-align: left;
+  padding-left: 0;
+}
+
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  text-align: left;
+}

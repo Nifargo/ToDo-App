@@ -17,6 +17,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   fullWidth = false,
   className,
   id,
+  style,
   ...props
 }, ref) => {
   const generatedId = useId();
@@ -53,6 +54,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
             rightIcon && 'pr-10',
             className
           )}
+          style={{
+            textAlign: 'left',
+            ...style,
+          }}
           {...props}
         />
 
