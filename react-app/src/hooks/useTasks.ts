@@ -2,8 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { where } from 'firebase/firestore';
 import { useFirestore } from './useFirestore';
 import { useAuth } from './useAuth';
+import { useLocalStorage } from './useLocalStorage';
+import { useMemo, useCallback } from 'react';
 import type { Task, CreateTaskInput, UpdateTaskInput, TaskFilter } from '@/types';
-import { startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfDay, endOfDay, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 
 interface UseTasksResult {
   tasks: Task[];
@@ -22,12 +24,13 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Build query constraints based on filter
+  // LocalStorage for guest users
+  const [localTasks, setLocalTasks] = useLocalStorage<Task[]>('guest_tasks', []);
+
+  // Firebase for authenticated users
   const getConstraints = () => {
     if (!user) return [];
-
     const constraints = [where('userId', '==', user.uid)];
-
     const now = new Date();
 
     switch (filter) {
@@ -48,7 +51,6 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
         break;
       case 'all':
       default:
-        // No additional constraints
         break;
     }
 
@@ -56,17 +58,71 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
   };
 
   const constraints = getConstraints();
-
   const {
-    data: tasks,
-    loading,
-    error,
+    data: firebaseTasks,
+    loading: firebaseLoading,
+    error: firebaseError,
     create,
     update,
     remove,
-  } = useFirestore<Task>('tasks', constraints, true);
+  } = useFirestore<Task>('tasks', constraints, user !== null);
 
-  // Create task mutation
+  // Filter local tasks based on filter
+  const filteredLocalTasks = useMemo(() => {
+    if (user) return []; // Use Firebase when logged in
+
+    const now = new Date();
+    return localTasks.filter(task => {
+      switch (filter) {
+        case 'today':
+          return task.dueDate && isWithinInterval(new Date(task.dueDate), {
+            start: startOfDay(now),
+            end: endOfDay(now)
+          });
+        case 'month':
+          return task.dueDate && isWithinInterval(new Date(task.dueDate), {
+            start: startOfMonth(now),
+            end: endOfMonth(now)
+          });
+        case 'completed':
+          return task.completed === true;
+        case 'all':
+        default:
+          return true;
+      }
+    });
+  }, [localTasks, filter, user]);
+
+  // Local task operations
+  const createLocalTask = useCallback(async (data: CreateTaskInput) => {
+    const newTask: Task = {
+      id: Date.now().toString(),
+      text: data.text,
+      completed: false,
+      dueDate: data.dueDate,
+      subtasks: data.subtasks?.map((st, index) => ({
+        ...st,
+        id: `${Date.now()}-${index}`,
+      })),
+      userId: 'guest',
+      createdAt: new Date().toISOString(),
+    };
+    setLocalTasks(prev => [...prev, newTask]);
+  }, [setLocalTasks]);
+
+  const updateLocalTask = useCallback(async (id: string, data: UpdateTaskInput) => {
+    setLocalTasks(prev => prev.map(task =>
+      task.id === id
+        ? { ...task, ...data, updatedAt: new Date().toISOString() }
+        : task
+    ));
+  }, [setLocalTasks]);
+
+  const deleteLocalTask = useCallback(async (id: string) => {
+    setLocalTasks(prev => prev.filter(task => task.id !== id));
+  }, [setLocalTasks]);
+
+  // Firebase task operations
   const createMutation = useMutation({
     mutationFn: async (data: CreateTaskInput) => {
       if (!user) throw new Error('User not authenticated');
@@ -79,15 +135,13 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
         subtasks: data.subtasks || [],
       };
 
-      const createdId = await create(newTaskData);
-      return createdId;
+      return await create(newTaskData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 
-  // Update task mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateTaskInput }) => {
       await update(id, data as Record<string, unknown>);
@@ -97,7 +151,6 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     },
   });
 
-  // Delete task mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await remove(id);
@@ -107,27 +160,45 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     },
   });
 
-  // Toggle complete helper
+  // Unified operations
+  const createTask = async (data: CreateTaskInput): Promise<void> => {
+    if (user) {
+      await createMutation.mutateAsync(data);
+    } else {
+      await createLocalTask(data);
+    }
+  };
+
+  const updateTask = async (id: string, data: UpdateTaskInput): Promise<void> => {
+    if (user) {
+      await updateMutation.mutateAsync({ id, data });
+    } else {
+      await updateLocalTask(id, data);
+    }
+  };
+
+  const deleteTask = async (id: string): Promise<void> => {
+    if (user) {
+      await deleteMutation.mutateAsync(id);
+    } else {
+      await deleteLocalTask(id);
+    }
+  };
+
   const toggleComplete = async (id: string, completed: boolean): Promise<void> => {
-    await updateMutation.mutateAsync({ id, data: { completed } });
+    await updateTask(id, { completed });
   };
 
   return {
-    tasks: tasks || [],
-    loading,
-    error,
-    createTask: async (data: CreateTaskInput) => {
-      await createMutation.mutateAsync(data);
-    },
-    updateTask: async (id: string, data: UpdateTaskInput) => {
-      await updateMutation.mutateAsync({ id, data });
-    },
-    deleteTask: async (id: string) => {
-      await deleteMutation.mutateAsync(id);
-    },
+    tasks: user ? (firebaseTasks || []) : filteredLocalTasks,
+    loading: user ? firebaseLoading : false,
+    error: user ? firebaseError : null,
+    createTask,
+    updateTask,
+    deleteTask,
     toggleComplete,
-    isCreating: createMutation.isPending,
-    isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending,
+    isCreating: user ? createMutation.isPending : false,
+    isUpdating: user ? updateMutation.isPending : false,
+    isDeleting: user ? deleteMutation.isPending : false,
   };
 }

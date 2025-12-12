@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from "react";
-import { Plus } from "lucide-react";
+import { Plus, User } from "lucide-react";
 
 // Auth
 import { useAuth } from "./hooks/useAuth";
@@ -48,6 +48,7 @@ function App() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [showLoginScreen, setShowLoginScreen] = useState(false);
 
   // Debounce search query
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -163,9 +164,13 @@ function App() {
     return <LoadingSpinner size="lg" text="Loading..." fullScreen />;
   }
 
-  // Show login screen if not authenticated
-  if (!user) {
-    return <LoginScreen />;
+  // Show login screen as modal
+  if (showLoginScreen && !user) {
+    return (
+      <div className="fixed inset-0 z-50">
+        <LoginScreen onClose={() => setShowLoginScreen(false)} />
+      </div>
+    );
   }
 
   return (
@@ -199,19 +204,39 @@ function App() {
           {/* Welcome Section */}
           <section className="mb-6 px-2">
             <div className="flex items-center gap-3">
-              {user.photoURL && (
-                <img
-                  src={user.photoURL}
-                  alt="Profile"
-                  className="h-12 w-12 flex-shrink-0 rounded-full border-2 border-white/30 shadow-lg"
-                />
-              )}
+              {/* Profile Photo/Icon - clickable to login if not authenticated */}
+              <button
+                onClick={() => !user && setShowLoginScreen(true)}
+                className={`h-12 w-12 flex-shrink-0 rounded-full border-2 border-white/30 shadow-lg ${
+                  !user ? 'cursor-pointer bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center' : ''
+                }`}
+                aria-label={user ? "Profile" : "Login"}
+              >
+                {user?.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Profile"
+                    className="h-full w-full rounded-full"
+                  />
+                ) : (
+                  <User className="h-6 w-6 text-white/70" />
+                )}
+              </button>
               <div className="flex-1">
                 <h1 className="font-geometric mb-1 text-2xl font-bold text-white md:text-3xl">
-                  Hello, {user.displayName || "User"}!
+                  Hello, {user?.displayName || "Guest"}!
                 </h1>
                 <p className="text-sm font-medium text-white/70 md:text-base">
                   {tasks.filter((t) => !t.completed).length} active tasks
+                  {!user && " • "}
+                  {!user && (
+                    <button
+                      onClick={() => setShowLoginScreen(true)}
+                      className="text-indigo-300 hover:text-indigo-200 underline"
+                    >
+                      Login to sync
+                    </button>
+                  )}
                 </p>
               </div>
             </div>

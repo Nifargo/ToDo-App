@@ -1,8 +1,12 @@
 import type { FC } from 'react';
 import GoogleSignInButton from './GoogleSignInButton';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
-const LoginScreen: FC = () => {
+interface LoginScreenProps {
+  onClose?: () => void;
+}
+
+const LoginScreen: FC<LoginScreenProps> = ({ onClose }) => {
   return (
     <>
       {/* Backdrop with blur effect - KEEP THIS */}
@@ -21,6 +25,17 @@ const LoginScreen: FC = () => {
         {/* Compact dark modal - MUCH SMALLER */}
         <div className="relative z-10 w-full max-w-md animate-scale-up p-4">
           <div className="prism-border dark-glass-morphism rounded-2xl p-6 shadow-2xl shadow-black/50">
+            {/* Close button - only show if onClose is provided */}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+
             {/* Minimal header with prismatic icon */}
             <div className="mb-6 text-center">
               {/* Prismatic icon with glow */}
