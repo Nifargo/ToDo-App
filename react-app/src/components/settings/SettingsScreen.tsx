@@ -44,7 +44,7 @@ const SettingsScreen: FC<SettingsScreenProps> = ({ onSignOut, onShowToast }) => 
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-800 to-indigo-900">
+    <div className="relative min-h-screen min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-gradient-to-br from-indigo-900 via-purple-800 to-indigo-900">
       {/* Ambient Background Orbs */}
       <div className="absolute inset-0 overflow-hidden">
         <div
@@ -62,7 +62,12 @@ const SettingsScreen: FC<SettingsScreenProps> = ({ onSignOut, onShowToast }) => 
       </div>
 
       {/* Main Content */}
-      <main className="relative z-10 pb-20 pt-6 md:pb-6">
+      <main
+        className="relative z-10 pt-6 md:pb-6"
+        style={{
+          paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
+        }}
+      >
         <Container maxWidth="xl">
           {/* Header */}
           <section className="mb-6 animate-fade-in px-2">
