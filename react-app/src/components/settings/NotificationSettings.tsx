@@ -131,11 +131,11 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
 
   return (
     <div className="space-y-6">
-      {/* Warning if notifications not supported */}
-      {!isSupported && (
+      {/* Warning if notifications not supported (only show on non-HTTPS) */}
+      {!isSupported && window.location.protocol !== 'https:' && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 backdrop-blur-xl animate-fade-in">
           <p className="text-sm text-white/80">
-            ⚠️ Notifications are not supported in this browser or require HTTPS.
+            ⚠️ Notifications require HTTPS.
             Settings will be saved for when notifications become available.
           </p>
         </div>
