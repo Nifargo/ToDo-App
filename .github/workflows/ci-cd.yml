@@ -1,4 +1,5 @@
 name: CI/CD - Test & Deploy
+# Auto-deploy React app to GitHub Pages from main branch
 
 on:
   push:
