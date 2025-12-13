@@ -177,13 +177,13 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     }
   };
 
-  const deleteTask = async (id: string): Promise<void> => {
+  const deleteTask = useCallback(async (id: string): Promise<void> => {
     if (user) {
       await deleteMutation.mutateAsync(id);
     } else {
       await deleteLocalTask(id);
     }
-  };
+  }, [user, deleteMutation, deleteLocalTask]);
 
   const toggleComplete = async (id: string, completed: boolean): Promise<void> => {
     const updateData: UpdateTaskInput = {

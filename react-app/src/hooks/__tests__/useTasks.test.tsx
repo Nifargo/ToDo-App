@@ -348,7 +348,10 @@ describe('useTasks', () => {
         await result.current.toggleComplete('task-123', true);
       });
 
-      expect(mockUpdate).toHaveBeenCalledWith('task-123', { completed: true });
+      expect(mockUpdate).toHaveBeenCalledWith('task-123', expect.objectContaining({
+        completed: true,
+        completedAt: expect.any(String)
+      }));
     });
 
     it('should toggle task to incomplete', async () => {
@@ -358,7 +361,10 @@ describe('useTasks', () => {
         await result.current.toggleComplete('task-123', false);
       });
 
-      expect(mockUpdate).toHaveBeenCalledWith('task-123', { completed: false });
+      expect(mockUpdate).toHaveBeenCalledWith('task-123', expect.objectContaining({
+        completed: false,
+        completedAt: null
+      }));
     });
 
     it('should handle toggle errors', async () => {
