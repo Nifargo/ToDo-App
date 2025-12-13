@@ -188,7 +188,7 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
   const toggleComplete = async (id: string, completed: boolean): Promise<void> => {
     const updateData: UpdateTaskInput = {
       completed,
-      completedAt: completed ? new Date().toISOString() : undefined,
+      completedAt: completed ? new Date().toISOString() : null,
     };
     await updateTask(id, updateData);
   };
