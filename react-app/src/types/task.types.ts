@@ -10,7 +10,7 @@ export interface Task {
   id: string;
   text: string;
   completed: boolean;
-  completedAt?: string; // Timestamp when task was marked as completed
+  completedAt?: string | null; // Timestamp when task was marked as completed
   dueDate?: string;
   createdAt: string;
   userId: string;
@@ -26,7 +26,7 @@ export interface CreateTaskInput {
 export interface UpdateTaskInput {
   text?: string;
   completed?: boolean;
-  completedAt?: string;
+  completedAt?: string | null;
   dueDate?: string;
   subtasks?: Subtask[];
 }
