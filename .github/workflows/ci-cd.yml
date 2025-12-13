@@ -25,27 +25,46 @@ jobs:
           cache: 'npm'
           cache-dependency-path: react-app/package-lock.json
 
-      # 3. Встановити залежності
+      # 3. Створити .env файл з Firebase конфігурацією
+      - name: Create .env file
+        working-directory: react-app
+        run: |
+          cat > .env << EOF
+          VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_VAPID_KEY=${{ secrets.VITE_FIREBASE_VAPID_KEY }}
+          VITE_CLOUDFLARE_WORKER_URL=${{ secrets.VITE_CLOUDFLARE_WORKER_URL }}
+          VITE_APP_NAME=My Tasks
+          VITE_APP_VERSION=9.0.0
+          VITE_ENABLE_DEVTOOLS=false
+          VITE_ENABLE_LOGGING=false
+          EOF
+
+      # 4. Встановити залежності
       - name: Install dependencies
         run: cd react-app && npm ci
 
-      # 4. TypeScript перевірка
+      # 5. TypeScript перевірка
       - name: TypeScript check
         run: cd react-app && npm run type-check
 
-      # 5. ESLint перевірка
+      # 6. ESLint перевірка
       - name: Run ESLint
         run: cd react-app && npm run lint
 
-      # 6. Запустити тести
+      # 7. Запустити тести
       - name: Run tests
         run: cd react-app && npm run test
 
-      # 7. Build проєкту
+      # 8. Build проєкту
       - name: Build project
         run: cd react-app && npm run build
 
-      # 8. Завантажити build артефакти (для deploy job)
+      # 9. Завантажити build артефакти (для deploy job)
       - name: Upload build artifacts
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-artifact@v4
