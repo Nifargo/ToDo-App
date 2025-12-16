@@ -51,7 +51,7 @@ const Modal: FC<ModalProps> = ({
       {/* Modal */}
       <div
         className={cn(
-          'frosted-glass relative z-10 w-full max-w-lg rounded-2xl p-6 shadow-2xl',
+          'frosted-glass relative z-10 w-full max-w-lg rounded-2xl p-6 shadow-2xl overflow-hidden',
           'animate-scale-in',
           className
         )}

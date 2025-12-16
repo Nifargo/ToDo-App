@@ -64,9 +64,9 @@ const TaskModal: FC<TaskModalProps> = ({
       onClose={handleClose}
       title={editingTask ? 'Edit Task' : 'New Task'}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 overflow-hidden">
         {/* Task name input */}
-        <div>
+        <div className="w-full">
           <Input
             type="text"
             value={taskText}
@@ -79,7 +79,7 @@ const TaskModal: FC<TaskModalProps> = ({
         </div>
 
         {/* Due date input */}
-        <div>
+        <div className="w-full">
           <label
             htmlFor="dueDate"
             className="mb-2 block text-sm font-medium text-gray-700"
