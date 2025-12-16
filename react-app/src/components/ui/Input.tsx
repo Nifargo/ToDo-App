@@ -57,7 +57,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
             props.type === 'date' ? 'text-center' : 'text-left',
             className
           )}
-          style={style}
+          style={{
+            ...(props.type === 'date' && {
+              textAlign: 'center',
+              WebkitTextFillColor: 'rgb(17 24 39)', // text-gray-900
+            }),
+            ...style,
+          }}
           {...props}
         />
 

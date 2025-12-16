@@ -598,3 +598,24 @@ input[type="time"]::-webkit-datetime-edit {
 input[type="time"]::-webkit-datetime-edit-fields-wrapper {
   text-align: left;
 }
+
+/* Center date input text */
+input[type="date"] {
+  text-align: center !important;
+}
+
+/* Center date input internal elements */
+input[type="date"]::-webkit-datetime-edit {
+  text-align: center;
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: center;
+}
