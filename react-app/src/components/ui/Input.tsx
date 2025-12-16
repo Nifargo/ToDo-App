@@ -52,6 +52,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
             error && 'border-danger/50 focus:border-danger/50 focus:ring-danger/20',
             leftIcon && 'pl-10',
             rightIcon && 'pr-10',
+            // For date inputs with left icon, add equal right padding to center the text
+            props.type === 'date' && leftIcon && 'pr-10',
             props.type === 'date' ? 'text-center' : 'text-left',
             className
           )}
