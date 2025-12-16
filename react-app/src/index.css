@@ -599,23 +599,46 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
   text-align: left;
 }
 
-/* Center date input text */
+/* Center date input text - Comprehensive mobile fix */
 input[type="date"] {
   text-align: center !important;
+  -webkit-text-align: center !important;
+  /* Remove default padding to allow proper centering */
+  padding-left: 1rem !important;
+  padding-right: 3rem !important; /* Extra space for calendar icon */
 }
 
 /* Center date input internal elements */
 input[type="date"]::-webkit-datetime-edit {
-  text-align: center;
-  padding: 0;
+  text-align: center !important;
+  padding: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
 }
 
 input[type="date"]::-webkit-datetime-edit-fields-wrapper {
-  text-align: center;
-  display: flex;
-  justify-content: center;
+  text-align: center !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
 
 input[type="date"]::-webkit-date-and-time-value {
-  text-align: center;
+  text-align: center !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Ensure text content is centered */
+input[type="date"]::-webkit-datetime-edit-text {
+  text-align: center !important;
+}
+
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  text-align: center !important;
 }

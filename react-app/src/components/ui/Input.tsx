@@ -52,16 +52,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
             error && 'border-danger/50 focus:border-danger/50 focus:ring-danger/20',
             leftIcon && 'pl-10',
             rightIcon && 'pr-10',
-            props.type === 'date' ? 'text-center [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer' : 'text-left',
+            props.type === 'date' && '[&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer',
             className
           )}
-          style={{
-            ...(props.type === 'date' && {
-              textAlign: 'center',
-              WebkitTextFillColor: 'rgb(17 24 39)', // text-gray-900
-            }),
-            ...style,
-          }}
+          style={style}
           {...props}
         />
 
