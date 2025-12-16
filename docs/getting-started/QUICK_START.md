@@ -63,7 +63,7 @@ python3 -m http.server 8000
 
 1. Створіть репозиторій на GitHub
 2. Завантажте всі файли
-3. Settings → Pages → виберіть branch
+3. Settings → Pages → виберіть **main branch**
 4. Додаток доступний за адресою: `https://username.github.io/repo-name`
 
 ## ❓ Проблеми?

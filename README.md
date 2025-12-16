@@ -140,7 +140,7 @@ ToDo app/
 ### GitHub Pages
 1. Завантажте проект на GitHub
 2. Перейдіть в Settings > Pages
-3. Виберіть branch для деплою
+3. Виберіть **main branch** як джерело для деплою
 4. Ваш додаток буде доступний за адресою: `https://username.github.io/repository-name`
 
 ### Netlify
