@@ -1,5 +1,4 @@
 import { type FC, useState, type FormEvent, type ChangeEvent } from 'react';
-import { Calendar } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -91,7 +90,6 @@ const TaskModal: FC<TaskModalProps> = ({
             type="date"
             value={dueDate}
             onChange={handleDueDateChange}
-            leftIcon={<Calendar className="h-5 w-5" />}
             disabled={isSaving}
           />
         </div>
