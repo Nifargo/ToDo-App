@@ -1,6 +1,7 @@
+/* @refresh reset */
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useEffect } from 'react';
-import { $getNodeByKey, $getSelection, $getRoot, $createParagraphNode, COMMAND_PRIORITY_LOW, KEY_ENTER_COMMAND } from 'lexical';
+import { $getNodeByKey, $getSelection, $getRoot, $createParagraphNode, COMMAND_PRIORITY_LOW, KEY_ENTER_COMMAND, type LexicalEditor } from 'lexical';
 import { $createCheckboxNode, $isCheckboxNode } from './CheckboxNode';
 
 export function CheckboxPlugin(): null {
@@ -57,7 +58,7 @@ export function CheckboxPlugin(): null {
               const editableSpan = newCheckboxContainer.querySelector('[contenteditable]') as HTMLElement;
               if (editableSpan) {
                 let focusSuccessful = false;
-                const timeoutIds: NodeJS.Timeout[] = [];
+                const timeoutIds: number[] = [];
 
                 const setFocusAndCursor = () => {
                   // Skip if already successful
@@ -151,7 +152,7 @@ export function CheckboxPlugin(): null {
 }
 
 // Helper function to insert a checkbox
-export function insertCheckbox(editor: any, text: string = '') {
+export function insertCheckbox(editor: LexicalEditor, text: string = '') {
   let newCheckboxKey: string | null = null;
 
   // Use editor.update() - it doesn't return a Promise
@@ -198,7 +199,7 @@ export function insertCheckbox(editor: any, text: string = '') {
 
   // Use MutationObserver to wait until DOM is stable
   const waitForStableDOMAndFocus = () => {
-    let stabilityTimer: NodeJS.Timeout | null = null;
+    let stabilityTimer: number | null = null;
     let observerDisconnected = false;
 
     const performFocus = () => {
@@ -210,7 +211,7 @@ export function insertCheckbox(editor: any, text: string = '') {
         const editableSpan = newCheckboxContainer.querySelector('[contenteditable]') as HTMLElement;
         if (editableSpan) {
           let focusSuccessful = false;
-          const timeoutIds: NodeJS.Timeout[] = [];
+          const timeoutIds: number[] = [];
 
           const setFocusAndCursor = () => {
             // Skip if already successful

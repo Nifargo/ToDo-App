@@ -1,3 +1,4 @@
+/* @refresh reset */
 import type {
   DOMConversionMap,
   DOMConversionOutput,
@@ -209,7 +210,7 @@ function CheckboxItem({ nodeKey, checked, text }: CheckboxItemProps) {
       blurProtectionActive = false;
     }, 1000);
 
-    const handleBlur = (e: FocusEvent) => {
+    const handleBlur = (_e: FocusEvent) => {
       if (blurProtectionActive && inputRef.current && !text) {
         // Check if focus moved to a non-checkbox element (exiting checklist mode)
         setTimeout(() => {

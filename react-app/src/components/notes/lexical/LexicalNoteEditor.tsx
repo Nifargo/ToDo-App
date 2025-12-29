@@ -1,3 +1,4 @@
+/* @refresh reset */
 import { type FC, useEffect } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
