@@ -1,4 +1,3 @@
-/* @refresh reset */
 import { type FC, useEffect } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -10,8 +9,9 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { $getRoot, $createParagraphNode, $createTextNode, type EditorState } from 'lexical';
-import { CheckboxNode, $isCheckboxNode, $createCheckboxNode } from './CheckboxNode';
-import { CheckboxPlugin, insertCheckbox } from './CheckboxPlugin';
+import { CheckboxNode } from './CheckboxNode';
+import { $isCheckboxNode, $createCheckboxNode, insertCheckbox } from './checkboxHelpers';
+import { CheckboxPlugin } from './CheckboxPlugin';
 import { cn } from '@/utils/cn';
 
 const theme = {
@@ -178,7 +178,3 @@ function EditorReadyPlugin({ onEditorReady }: { onEditorReady?: (insertCheckboxF
 
   return null;
 }
-
-// Export helper to insert checkbox from outside
-// eslint-disable-next-line react-refresh/only-export-components
-export { insertCheckbox };

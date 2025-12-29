@@ -1,4 +1,3 @@
-/* @refresh reset */
 import type {
   DOMConversionMap,
   DOMConversionOutput,
@@ -87,11 +86,7 @@ export class CheckboxNode extends DecoratorNode<React.JSX.Element> {
   }
 
   static importJSON(serializedNode: SerializedCheckboxNode): CheckboxNode {
-    const node = $createCheckboxNode(
-      serializedNode.checked,
-      serializedNode.text
-    );
-    return node;
+    return new CheckboxNode(serializedNode.checked, serializedNode.text);
   }
 
   exportDOM(): DOMExportOutput {
@@ -124,20 +119,8 @@ export class CheckboxNode extends DecoratorNode<React.JSX.Element> {
 function convertCheckboxElement(domNode: HTMLElement): DOMConversionOutput | null {
   const checked = domNode.getAttribute('data-checked') === 'true';
   const text = domNode.textContent || '';
-  const node = $createCheckboxNode(checked, text);
+  const node = new CheckboxNode(checked, text);
   return { node };
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function $createCheckboxNode(checked: boolean, text: string): CheckboxNode {
-  return new CheckboxNode(checked, text);
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function $isCheckboxNode(
-  node: LexicalNode | null | undefined
-): node is CheckboxNode {
-  return node instanceof CheckboxNode;
 }
 
 // React component for rendering the checkbox
