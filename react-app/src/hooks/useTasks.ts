@@ -227,7 +227,8 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     const intervalId = setInterval(cleanupOldCompletedTasks, 60 * 60 * 1000);
 
     return () => clearInterval(intervalId);
-  }, [cleanupOldCompletedTasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only on mount
 
   return {
     tasks: user ? (firebaseTasks || []) : filteredLocalTasks,

@@ -21,7 +21,16 @@ export default {
       animation: {
         'spin-slow': 'spin 3s linear infinite',
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: 'none',
+          },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }

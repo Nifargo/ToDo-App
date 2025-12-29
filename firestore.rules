@@ -26,5 +26,22 @@ service cloud.firestore {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
     }
+
+    // Notes collection - users can only read/write their own notes
+    match /notes/{noteId} {
+      // Allow read if user is authenticated and note.userId == auth.uid
+      allow read: if request.auth != null &&
+                     resource.data.userId == request.auth.uid;
+
+      // Allow update/delete if user is authenticated and note.userId == auth.uid
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
+
+      // Allow create only if:
+      // 1. User is authenticated
+      // 2. New note.userId matches auth.uid
+      allow create: if request.auth != null &&
+                       request.resource.data.userId == request.auth.uid;
+    }
   }
 }

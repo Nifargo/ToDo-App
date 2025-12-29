@@ -18,7 +18,7 @@ interface NavItemConfig {
 
 const navItems: NavItemConfig[] = [
   { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-  { id: 'list', label: 'List', icon: ClipboardList },
+  { id: 'list', label: 'Notes', icon: ClipboardList },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

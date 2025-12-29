@@ -25,6 +25,7 @@ import {
 // Lazy load heavy components
 const TaskModal = lazy(() => import("./components/tasks/TaskModal"));
 const SettingsScreen = lazy(() => import("./components/settings/SettingsScreen"));
+const ListView = lazy(() => import("./components/list/ListView"));
 
 // Hooks
 import { useTasks } from "./hooks/useTasks";
@@ -49,6 +50,7 @@ function App() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [showLoginScreen, setShowLoginScreen] = useState(false);
+  const [isEditingNote, setIsEditingNote] = useState(false);
 
   // Debounce search query
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -193,8 +195,8 @@ function App() {
 
       {/* Tasks Screen */}
       <main
-        className={`relative z-10 pt-6 transition-opacity duration-300 md:pb-6 ${
-          activeNav === 'tasks' ? 'opacity-100' : 'pointer-events-none absolute opacity-0'
+        className={`absolute inset-0 z-10 pt-6 transition-opacity duration-300 md:pb-6 ${
+          activeNav === 'tasks' ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         style={{
           paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
@@ -303,6 +305,26 @@ function App() {
         </Container>
       </main>
 
+      {/* List View Screen */}
+      <Suspense fallback={null}>
+        <main
+          className={`absolute inset-0 z-10 pt-6 transition-opacity duration-300 md:pb-6 ${
+            activeNav === 'list' ? 'opacity-100' : 'pointer-events-none opacity-0'
+          }`}
+          style={{
+            paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
+          }}
+        >
+          <Container maxWidth="xl">
+            <ListView
+              onShowToast={addToast}
+              onEditingChange={setIsEditingNote}
+              onShowLoginScreen={() => setShowLoginScreen(true)}
+            />
+          </Container>
+        </main>
+      </Suspense>
+
       {/* Settings Screen */}
       <Suspense fallback={null}>
         <div
@@ -312,13 +334,16 @@ function App() {
         >
           <SettingsScreen
             onShowToast={addToast}
-            onSignOut={() => setActiveNav('tasks')}
+            onSignOut={() => {
+              setShowLoginScreen(false);
+              setActiveNav('tasks');
+            }}
           />
         </div>
       </Suspense>
 
       {/* Bottom Navigation */}
-      <BottomNav activeItem={activeNav} onItemClick={setActiveNav} />
+      {!isEditingNote && <BottomNav activeItem={activeNav} onItemClick={setActiveNav} />}
 
       {/* Task Modal - Lazy loaded */}
       <Suspense fallback={null}>

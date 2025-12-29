@@ -51,7 +51,7 @@ const Toast: FC<ToastProps> = ({
     <div
       className={cn(
         'frosted-glass flex items-start gap-3 rounded-xl border-2 p-4 shadow-lg',
-        'animate-slide-down',
+        'animate-slide-up',
         variantStyles[variant]
       )}
       role="alert"
@@ -89,7 +89,10 @@ export const ToastContainer: FC<ToastContainerProps> = ({ toasts, onClose }) => 
 
   const content = (
     <div
-      className="fixed right-4 top-4 z-50 flex flex-col gap-2"
+      className="fixed left-1/2 z-50 flex -translate-x-1/2 flex-col gap-2"
+      style={{
+        bottom: 'calc(5rem + env(safe-area-inset-bottom))',
+      }}
       aria-live="polite"
       aria-atomic="true"
     >

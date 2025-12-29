@@ -52,6 +52,14 @@ export function useFirestore<T extends { id: string }>(
         setLoading(true);
         setError(null);
 
+        // Skip fetch if constraints is empty (likely unauthenticated user)
+        // This prevents "Missing or insufficient permissions" errors
+        if (constraints.length === 0) {
+          setData([]);
+          setLoading(false);
+          return;
+        }
+
         const collectionRef = collection(db, collectionName);
         const q = constraints.length > 0 ? query(collectionRef, ...constraints) : collectionRef;
 

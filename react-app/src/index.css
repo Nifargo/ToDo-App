@@ -642,3 +642,15 @@ input[type="date"]::-webkit-datetime-edit-month-field,
 input[type="date"]::-webkit-datetime-edit-year-field {
   text-align: center !important;
 }
+
+/* Checkbox placeholder styles */
+.empty-checkbox-placeholder:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+  font-style: italic;
+}
+
+.empty-checkbox-placeholder:focus:empty::before {
+  color: rgba(255, 255, 255, 0.2);
+}
