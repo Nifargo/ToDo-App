@@ -152,6 +152,7 @@ export function CheckboxPlugin(): null {
 }
 
 // Helper function to insert a checkbox
+// eslint-disable-next-line react-refresh/only-export-components
 export function insertCheckbox(editor: LexicalEditor, text: string = '') {
   let newCheckboxKey: string | null = null;
 

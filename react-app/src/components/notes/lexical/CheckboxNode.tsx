@@ -128,10 +128,12 @@ function convertCheckboxElement(domNode: HTMLElement): DOMConversionOutput | nul
   return { node };
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function $createCheckboxNode(checked: boolean, text: string): CheckboxNode {
   return new CheckboxNode(checked, text);
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function $isCheckboxNode(
   node: LexicalNode | null | undefined
 ): node is CheckboxNode {
@@ -210,7 +212,7 @@ function CheckboxItem({ nodeKey, checked, text }: CheckboxItemProps) {
       blurProtectionActive = false;
     }, 1000);
 
-    const handleBlur = (_e: FocusEvent) => {
+    const handleBlur = () => {
       if (blurProtectionActive && inputRef.current && !text) {
         // Check if focus moved to a non-checkbox element (exiting checklist mode)
         setTimeout(() => {

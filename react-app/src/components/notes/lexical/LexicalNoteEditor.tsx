@@ -154,6 +154,7 @@ function InitialContentPlugin({ initialContent }: { initialContent?: string }) {
         }
       });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]); // ✅ Removed initialContent from dependencies - load only once
 
   return null;
@@ -179,4 +180,5 @@ function EditorReadyPlugin({ onEditorReady }: { onEditorReady?: (insertCheckboxF
 }
 
 // Export helper to insert checkbox from outside
+// eslint-disable-next-line react-refresh/only-export-components
 export { insertCheckbox };
