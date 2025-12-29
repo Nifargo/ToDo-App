@@ -1,4 +1,4 @@
-import { $getNodeByKey, $getSelection, $getRoot, type LexicalEditor, type LexicalNode } from 'lexical';
+import { $getSelection, $getRoot, type LexicalEditor, type LexicalNode } from 'lexical';
 import { CheckboxNode } from './CheckboxNode';
 
 // Helper function to create a checkbox node
