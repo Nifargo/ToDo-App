@@ -2,7 +2,6 @@ import type {
   DOMConversionMap,
   DOMConversionOutput,
   DOMExportOutput,
-  LexicalNode,
   NodeKey,
   SerializedLexicalNode,
   Spread,
