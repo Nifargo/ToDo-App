@@ -195,16 +195,16 @@ function App() {
 
       {/* Tasks Screen */}
       <main
-        className={`absolute inset-0 z-10 pt-6 transition-opacity duration-300 md:pb-6 ${
+        className={`absolute inset-0 z-10 flex flex-col pt-6 transition-opacity duration-300 md:pb-6 ${
           activeNav === 'tasks' ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         style={{
           paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
         }}
       >
-        <Container maxWidth="xl">
-          {/* Welcome Section */}
-          <section className="mb-6 px-2">
+        <Container maxWidth="xl" className="flex flex-col flex-1 overflow-hidden">
+          {/* Welcome Section - Fixed */}
+          <section className="mb-6 px-2 flex-shrink-0">
             <div className="flex items-center gap-3">
               {/* Profile Photo/Icon - clickable to login if not authenticated */}
               <button
@@ -244,8 +244,8 @@ function App() {
             </div>
           </section>
 
-          {/* Search and Filter Section */}
-          <section className="mb-4">
+          {/* Search and Filter Section - Fixed */}
+          <section className="mb-4 flex-shrink-0">
             {/* Action buttons row */}
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-geometric holographic-text text-2xl font-bold">
@@ -289,8 +289,8 @@ function App() {
             )}
           </section>
 
-          {/* Task List Section */}
-          <section>
+          {/* Task List Section - Scrollable */}
+          <section className="flex-1 overflow-y-auto px-2 pb-4">
             <TaskList
               tasks={tasks}
               loading={tasksLoading}
@@ -308,14 +308,14 @@ function App() {
       {/* List View Screen */}
       <Suspense fallback={null}>
         <main
-          className={`absolute inset-0 z-10 pt-6 transition-opacity duration-300 md:pb-6 ${
+          className={`absolute inset-0 z-10 flex flex-col pt-6 transition-opacity duration-300 md:pb-6 ${
             activeNav === 'list' ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
           style={{
             paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))',
           }}
         >
-          <Container maxWidth="xl">
+          <Container maxWidth="xl" className="flex flex-col flex-1 overflow-hidden">
             <ListView
               onShowToast={addToast}
               onEditingChange={setIsEditingNote}

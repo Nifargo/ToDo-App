@@ -654,3 +654,33 @@ input[type="date"]::-webkit-datetime-edit-year-field {
 .empty-checkbox-placeholder:focus:empty::before {
   color: rgba(255, 255, 255, 0.2);
 }
+
+/* Custom scrollbar styles for task list */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.5) rgba(255, 255, 255, 0.1);
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:active {
+  background: rgba(99, 102, 241, 0.8);
+}

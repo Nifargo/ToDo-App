@@ -145,9 +145,9 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
   }
 
   return (
-    <div className="relative">
-      {/* Header with Create Button */}
-      <section className="mb-6 px-2 pt-2">
+    <div className="relative flex h-full flex-col overflow-hidden">
+      {/* Header with Create Button - Fixed */}
+      <section className="mb-6 flex-shrink-0 px-2 pt-2">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="font-geometric holographic-text text-3xl font-bold md:text-4xl">
             Notes
@@ -167,8 +167,8 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
         </p>
       </section>
 
-      {/* Notes Grid */}
-      <section>
+      {/* Notes Grid - Scrollable */}
+      <section className="flex-1 overflow-y-auto px-2 pb-4">
         {notes.length === 0 ? (
           <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
             <div className="mb-4 text-6xl">📝</div>
