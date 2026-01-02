@@ -134,9 +134,33 @@ async function fetchAllUsers(env, accessToken) {
   // Map to user objects
   return data.documents.map(doc => {
     const fields = doc.fields;
+
+    // Get FCM tokens array (new) or single token (legacy)
+    let fcmTokens = [];
+
+    if (fields.fcmTokens?.arrayValue?.values) {
+      // New: array of token objects
+      fcmTokens = fields.fcmTokens.arrayValue.values.map(tokenObj => {
+        const tokenFields = tokenObj.mapValue?.fields || {};
+        return {
+          token: tokenFields.token?.stringValue,
+          device: tokenFields.device?.stringValue || 'Unknown',
+          platform: tokenFields.platform?.stringValue || 'web',
+          lastUsed: tokenFields.lastUsed?.stringValue
+        };
+      }).filter(t => t.token); // Filter out invalid tokens
+    } else if (fields.fcmToken?.stringValue) {
+      // Legacy: single token
+      fcmTokens = [{
+        token: fields.fcmToken.stringValue,
+        device: 'Legacy Device',
+        platform: 'web'
+      }];
+    }
+
     return {
       userId: fields.userId?.stringValue || doc.name.split('/').pop(),
-      fcmToken: fields.fcmToken?.stringValue || null,
+      fcmTokens: fcmTokens,
       notificationTime: fields.notificationTime?.stringValue || '09:00' // Default to 09:00
     };
   });
@@ -146,7 +170,7 @@ async function fetchAllUsers(env, accessToken) {
 // Converts notification time (HH:MM) to UTC hour and compares with current hour
 function filterUsersByNotificationTime(users, currentUTCHour) {
   return users.filter(user => {
-    if (!user.fcmToken) return false; // Skip users without FCM token
+    if (!user.fcmTokens || user.fcmTokens.length === 0) return false; // Skip users without FCM tokens
 
     // Parse user's notification time (e.g. "09:00")
     const [hours, minutes] = user.notificationTime.split(':').map(Number);
@@ -161,7 +185,7 @@ function filterUsersByNotificationTime(users, currentUTCHour) {
   });
 }
 
-// Process notifications for a single user
+// Process notifications for a single user (sends to ALL devices)
 async function processUserNotifications(env, accessToken, user, today) {
   try {
     // Fetch tasks for this user
@@ -186,43 +210,55 @@ async function processUserNotifications(env, accessToken, user, today) {
       notificationBody = `You have ${todayTasks.length} task${todayTasks.length > 1 ? 's' : ''} due today`;
     }
 
-    const message = {
-      message: {
-        token: user.fcmToken,
-        notification: {
-          title: `📋 Task Reminder`,
-          body: notificationBody
-        },
-        data: {
-          totalCount: tasks.length.toString(),
-          overdueCount: overdueTasks.length.toString(),
-          todayCount: todayTasks.length.toString(),
-          date: today
-        }
-      }
-    };
-
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`;
 
-    const response = await fetch(fcmUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(message)
-    });
+    // Send notification to ALL devices
+    let successCount = 0;
+    let failCount = 0;
 
-    if (response.ok) {
-      console.log(`Notification sent to user ${user.userId}: ${notificationBody}`);
+    for (const tokenData of user.fcmTokens) {
+      const message = {
+        message: {
+          token: tokenData.token,
+          notification: {
+            title: `📋 Task Reminder`,
+            body: notificationBody
+          },
+          data: {
+            totalCount: tasks.length.toString(),
+            overdueCount: overdueTasks.length.toString(),
+            todayCount: todayTasks.length.toString(),
+            date: today
+          }
+        }
+      };
 
-      // Mark tasks as notified with today's date
+      const response = await fetch(fcmUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(message)
+      });
+
+      if (response.ok) {
+        successCount++;
+        console.log(`✅ Notification sent to ${user.userId} on ${tokenData.device}`);
+      } else {
+        failCount++;
+        const error = await response.text();
+        console.error(`❌ Failed to send to ${user.userId} on ${tokenData.device}:`, error);
+      }
+    }
+
+    console.log(`📊 User ${user.userId}: ${successCount} successful, ${failCount} failed out of ${user.fcmTokens.length} devices`);
+
+    // Mark tasks as notified only if at least one notification succeeded
+    if (successCount > 0) {
       for (const task of tasks) {
         await markTaskAsNotified(env, accessToken, task.id, today);
       }
-    } else {
-      const error = await response.text();
-      console.error(`Failed to send notification to ${user.userId}:`, error);
     }
   } catch (error) {
     console.error(`Error processing notifications for user ${user.userId}:`, error);
