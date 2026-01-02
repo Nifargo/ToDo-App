@@ -20,7 +20,7 @@ const filters: FilterTab[] = [
 
 const FilterTabs: FC<FilterTabsProps> = ({ activeFilter, onFilterChange }) => {
   return (
-    <div className="mb-4 flex gap-2 rounded-2xl p-2 bg-gradient-to-br from-indigo-900/60 to-purple-900/60 backdrop-blur-xl border border-white/20">
+    <div className="flex gap-2 rounded-2xl p-2 bg-gradient-to-br from-indigo-900/60 to-purple-900/60 backdrop-blur-xl border border-white/20">
       {filters.map((filter) => (
         <button
           key={filter.key}

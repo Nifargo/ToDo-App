@@ -245,9 +245,9 @@ function App() {
           </section>
 
           {/* Search and Filter Section - Fixed */}
-          <section className="mb-4 flex-shrink-0">
+          <section className="mb-2 flex-shrink-0">
             {/* Action buttons row */}
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between">
               <h2 className="font-geometric holographic-text text-2xl font-bold">
                 My Tasks
               </h2>

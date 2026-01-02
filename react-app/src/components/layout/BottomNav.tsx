@@ -35,7 +35,7 @@ const BottomNav: FC<BottomNavProps> = ({
         className
       )}
       style={{
-        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+        paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))',
       }}
     >
       <div className="mx-auto flex max-w-lg items-center justify-around">
@@ -47,7 +47,7 @@ const BottomNav: FC<BottomNavProps> = ({
               key={id}
               onClick={() => onItemClick?.(id)}
               className={cn(
-                'flex flex-1 flex-col items-center gap-1 py-2 transition-all duration-200',
+                'flex flex-1 flex-col items-center gap-0.5 py-1.5 transition-all duration-200',
                 'rounded-lg',
                 isActive
                   ? 'text-primary'
@@ -58,7 +58,7 @@ const BottomNav: FC<BottomNavProps> = ({
             >
               <Icon
                 className={cn(
-                  'h-6 w-6 transition-transform',
+                  'h-5 w-5 transition-transform',
                   isActive && 'scale-110'
                 )}
               />
@@ -73,7 +73,7 @@ const BottomNav: FC<BottomNavProps> = ({
 
               {/* Active indicator */}
               {isActive && (
-                <div className="absolute bottom-0 h-1 w-12 rounded-t-full bg-primary animate-scale-in" />
+                <div className="absolute bottom-0 h-0.5 w-10 rounded-t-full bg-primary animate-scale-in" />
               )}
             </button>
           );
