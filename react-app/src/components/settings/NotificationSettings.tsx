@@ -57,6 +57,43 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
     loadSettings();
   }, [user, onError]);
 
+  // Sync with browser permission state (run once after loading)
+  useEffect(() => {
+    const syncPermissionState = async (): Promise<void> => {
+      if (!user || loading) return;
+
+      // If Firestore says enabled, but browser permission is not granted
+      if (settings.enabled && permission !== 'granted') {
+        console.warn('⚠️  Notification mismatch: Firestore enabled but browser permission not granted');
+
+        // Auto-disable in Firestore to match reality
+        const syncedSettings = { ...settings, enabled: false };
+
+        try {
+          const docRef = doc(db, 'users', user.uid);
+          await setDoc(
+            docRef,
+            {
+              notificationSettings: syncedSettings,
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true }
+          );
+
+          setSettings(syncedSettings);
+          onError('Notifications were auto-disabled. Browser permission was revoked. Please re-enable.');
+        } catch (error) {
+          console.error('Failed to sync notification state:', error);
+        }
+      }
+    };
+
+    // Only sync once after initial load
+    if (!loading) {
+      syncPermissionState();
+    }
+  }, [loading]); // Only run when loading changes from true to false
+
   // Save settings to Firestore
   const handleSaveSettings = async (settingsToSave?: NotificationSettingsType): Promise<void> => {
     if (!user) return;
@@ -137,6 +174,20 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
           <p className="text-sm text-white/80">
             ⚠️ Notifications require HTTPS.
             Settings will be saved for when notifications become available.
+          </p>
+        </div>
+      )}
+
+      {/* Warning if settings say enabled but browser permission not granted */}
+      {settings.enabled && permission !== 'granted' && (
+        <div className="rounded-lg border border-orange-500/30 bg-orange-500/10 p-4 backdrop-blur-xl animate-fade-in">
+          <p className="text-sm text-white/80 font-semibold mb-2">
+            ⚠️ Notification Permission Lost
+          </p>
+          <p className="text-sm text-white/70">
+            Notifications are enabled in settings, but browser permission is missing.
+            This can happen after clearing browser data or reinstalling the app.
+            Please toggle notifications off and on again to restore permission.
           </p>
         </div>
       )}
