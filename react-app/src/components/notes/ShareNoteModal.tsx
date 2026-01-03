@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, UserPlus, Users, Trash2 } from 'lucide-react';
 import type { Note, NoteCollaborator, ShareNoteResult } from '@/types';
 
@@ -27,17 +27,20 @@ export function ShareNoteModal({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Define loadCollaborators with useCallback to prevent infinite loop
+  const loadCollaborators = useCallback(async () => {
+    if (!note) return;
+    const collab = await getCollaborators(note.id);
+    setCollaborators(collab);
+  }, [note, getCollaborators]);
+
   // Load collaborators when modal opens
   useEffect(() => {
     if (isOpen && note) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadCollaborators();
     }
-  }, [isOpen, note]);
-
-  const loadCollaborators = async () => {
-    const collab = await getCollaborators(note.id);
-    setCollaborators(collab);
-  };
+  }, [isOpen, note, loadCollaborators]);
 
   const handleShare = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-import { type FC, useState, useEffect } from 'react';
+import { type FC, useState, useEffect, useRef } from 'react';
 import { Bell, Clock } from 'lucide-react';
 import Switch from '@/components/ui/Switch';
 import Input from '@/components/ui/Input';
@@ -30,6 +30,7 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const hasSyncedRef = useRef(false); // Track if we already synced
 
   // Load settings from Firestore
   useEffect(() => {
@@ -57,10 +58,10 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
     loadSettings();
   }, [user, onError]);
 
-  // Sync with browser permission state
+  // Sync with browser permission state (run once)
   useEffect(() => {
     const syncPermissionState = async (): Promise<void> => {
-      if (!user || loading || saving) return;
+      if (!user || loading || hasSyncedRef.current) return;
 
       // If Firestore says enabled, but browser permission is not granted (includes 'default' and 'denied')
       if (settings.enabled && permission !== 'granted') {
@@ -68,11 +69,13 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
         console.warn(`   Firestore: enabled = ${settings.enabled}`);
         console.warn(`   Browser: permission = ${permission}`);
 
+        // Mark as synced to prevent re-running
+        hasSyncedRef.current = true;
+
         // Auto-disable in Firestore to match reality
         const syncedSettings = { ...settings, enabled: false };
 
         try {
-          setSaving(true); // Prevent infinite loop
           const docRef = doc(db, 'users', user.uid);
           await setDoc(
             docRef,
@@ -88,14 +91,15 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
           onError('Notifications were auto-disabled. Browser permission was revoked. Please re-enable.');
         } catch (error) {
           console.error('Failed to sync notification state:', error);
-        } finally {
-          setSaving(false);
         }
       }
     };
 
-    syncPermissionState();
-  }, [settings.enabled, permission, loading, user]); // Re-check when any of these change
+    if (!loading) {
+      syncPermissionState();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]); // Only run when loading completes
 
   // Save settings to Firestore
   const handleSaveSettings = async (settingsToSave?: NotificationSettingsType): Promise<void> => {
