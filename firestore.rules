@@ -27,21 +27,37 @@ service cloud.firestore {
                        request.resource.data.userId == request.auth.uid;
     }
 
-    // Notes collection - users can only read/write their own notes
+    // Notes collection - users can read/write their own notes AND shared notes
     match /notes/{noteId} {
-      // Allow read if user is authenticated and note.userId == auth.uid
-      allow read: if request.auth != null &&
-                     resource.data.userId == request.auth.uid;
+      // Helper functions
+      function isOwner() {
+        return request.auth.uid == resource.data.userId;
+      }
 
-      // Allow update/delete if user is authenticated and note.userId == auth.uid
-      allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+      function isSharedUser() {
+        return request.auth.uid in resource.data.get('sharedWith', []);
+      }
 
-      // Allow create only if:
-      // 1. User is authenticated
-      // 2. New note.userId matches auth.uid
+      function canAccess() {
+        return isOwner() || isSharedUser();
+      }
+
+      // READ: owner OR in sharedWith array
+      allow read: if request.auth != null && canAccess();
+
+      // UPDATE: owner OR shared user
+      // But only owner can modify sharedWith array
+      allow update: if request.auth != null && canAccess() &&
+                       (isOwner() ||
+                        request.resource.data.sharedWith == resource.data.sharedWith);
+
+      // DELETE: ONLY owner can delete
+      allow delete: if request.auth != null && isOwner();
+
+      // CREATE: authenticated, userId = auth.uid, sharedWith must be array
       allow create: if request.auth != null &&
-                       request.resource.data.userId == request.auth.uid;
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.sharedWith is list;
     }
   }
 }

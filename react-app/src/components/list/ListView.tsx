@@ -1,5 +1,5 @@
-import { type FC, useState } from 'react';
-import { Plus, LogIn } from 'lucide-react';
+import { type FC, useState, useMemo } from 'react';
+import { Plus, LogIn, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/utils/cn';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -19,6 +19,7 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
   const { notes, loading, createNote, updateNote, deleteNote, getNote, isCreating } = useNotes();
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'owned' | 'shared'>('all');
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -91,6 +92,17 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
     onEditingChange?.(false);
   };
 
+  // Filter notes based on selected filter
+  const filteredNotes = useMemo(() => {
+    if (filter === 'owned') {
+      return notes.filter(note => note.userId === user?.uid);
+    }
+    if (filter === 'shared') {
+      return notes.filter(note => note.userId !== user?.uid);
+    }
+    return notes;
+  }, [notes, filter, user]);
+
   // Show editor if editing or creating
   const currentNote = editingNoteId ? (getNote(editingNoteId) || null) : null;
   if (isCreatingNew || editingNoteId) {
@@ -162,14 +174,52 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
             <span className="hidden sm:inline">New Note</span>
           </Button>
         </div>
+
+        {/* Filter Tabs */}
+        <div className="mb-4 flex gap-2">
+          <button
+            onClick={() => setFilter('all')}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+              filter === 'all'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
+            )}
+          >
+            Всі нотатки
+          </button>
+          <button
+            onClick={() => setFilter('owned')}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+              filter === 'owned'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
+            )}
+          >
+            Мої нотатки
+          </button>
+          <button
+            onClick={() => setFilter('shared')}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+              filter === 'shared'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
+            )}
+          >
+            Поділилися зі мною
+          </button>
+        </div>
+
         <p className="text-sm text-white/70 md:text-base">
-          {notes.length} {notes.length === 1 ? 'note' : 'notes'}
+          {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
         </p>
       </section>
 
       {/* Notes Grid - Scrollable */}
       <section className="flex-1 overflow-y-auto px-2 pb-4">
-        {notes.length === 0 ? (
+        {filteredNotes.length === 0 ? (
           <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
             <div className="mb-4 text-6xl">📝</div>
             <h3 className="mb-2 text-xl font-semibold text-white">No notes yet</h3>
@@ -179,7 +229,7 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {notes.map((note, index) => {
+            {filteredNotes.map((note, index) => {
               const preview = getPreview(note.content);
 
               return (
@@ -193,6 +243,21 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
                   )}
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
+                  {/* Shared indicator for notes shared WITH me */}
+                  {note.userId !== user?.uid && (
+                    <div className="absolute top-2 right-2 rounded-full bg-green-500/90 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white shadow-lg">
+                      Shared
+                    </div>
+                  )}
+
+                  {/* Shared count indicator for MY notes that I shared with others */}
+                  {note.userId === user?.uid && note.sharedWith && note.sharedWith.length > 0 && (
+                    <div className="absolute top-2 right-2 rounded-full bg-blue-500/90 backdrop-blur-sm px-3 py-1 text-xs font-semibold text-white shadow-lg flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {note.sharedWith.length}
+                    </div>
+                  )}
+
                   {/* Title */}
                   <h3 className="font-geometric mb-2 line-clamp-2 text-lg font-bold text-white drop-shadow-lg">
                     {note.title}

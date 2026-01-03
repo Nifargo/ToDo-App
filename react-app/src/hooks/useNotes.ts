@@ -3,7 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/config/firebase';
 import { noteService } from '@/services/note.service';
-import type { Note, CreateNoteInput, UpdateNoteInput } from '@/types';
+import type {
+  Note,
+  CreateNoteInput,
+  UpdateNoteInput,
+  ShareNoteResult,
+  NoteCollaborator,
+} from '@/types';
 
 export const useNotes = () => {
   const [user] = useAuthState(auth);
@@ -23,9 +29,9 @@ export const useNotes = () => {
 
     setLoading(true);
     try {
-      // Load from Firebase
-      const firebaseNotes = await noteService.getNotesByUser(user.uid);
-      setNotes(firebaseNotes);
+      // Load all notes (owned + shared with user)
+      const allNotes = await noteService.getAllNotes(user.uid);
+      setNotes(allNotes);
     } catch (error) {
       console.error('Error loading notes:', error);
       setNotes([]);
@@ -57,6 +63,7 @@ export const useNotes = () => {
           title: data.content.trim().split('\n')[0].trim() || 'Untitled Note',
           content: data.content,
           userId: user.uid,
+          sharedWith: [], // Initialize empty shared list
           createdAt: now,
           updatedAt: now,
         };
@@ -140,6 +147,53 @@ export const useNotes = () => {
     [notes]
   );
 
+  // Share note with email
+  const shareNote = useCallback(
+    async (noteId: string, email: string): Promise<ShareNoteResult> => {
+      if (!user) {
+        throw new Error('Потрібна авторизація');
+      }
+
+      const result = await noteService.shareNoteWithEmail(noteId, email);
+
+      if (result.success) {
+        loadNotes(); // Refresh notes to show updated share status
+      }
+
+      return result;
+    },
+    [user, loadNotes]
+  );
+
+  // Remove shared user
+  const unshareNote = useCallback(
+    async (noteId: string, userId: string): Promise<void> => {
+      if (!user) {
+        throw new Error('Потрібна авторизація');
+      }
+
+      await noteService.unshareNote(noteId, userId);
+      loadNotes();
+    },
+    [user, loadNotes]
+  );
+
+  // Get collaborators for a note
+  const getCollaborators = useCallback(
+    async (noteId: string): Promise<NoteCollaborator[]> => {
+      return noteService.getNoteCollaborators(noteId);
+    },
+    []
+  );
+
+  // Check if current user is owner
+  const isNoteOwner = useCallback(
+    (note: Note): boolean => {
+      return user?.uid === note.userId;
+    },
+    [user]
+  );
+
   return {
     notes,
     loading,
@@ -150,5 +204,9 @@ export const useNotes = () => {
     deleteNote,
     getNote,
     refreshNotes: loadNotes,
+    shareNote,
+    unshareNote,
+    getCollaborators,
+    isNoteOwner,
   };
 };

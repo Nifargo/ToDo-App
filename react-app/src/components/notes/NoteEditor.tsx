@@ -1,9 +1,11 @@
 import { type FC, useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, Trash2, CheckSquare } from 'lucide-react';
+import { ChevronLeft, Trash2, CheckSquare, Users } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useNotes } from '@/hooks/useNotes';
 import type { Note } from '@/types';
 import { LexicalNoteEditor } from './lexical/LexicalNoteEditor';
+import { ShareNoteModal } from './ShareNoteModal';
 
 interface NoteEditorProps {
   note: Note | null; // null = new note
@@ -17,7 +19,11 @@ const NoteEditor: FC<NoteEditorProps> = ({ note, onBack, onSave, onDelete }) => 
   const [isSaving, setIsSaving] = useState(false);
   const [insertCheckboxFn, setInsertCheckboxFn] = useState<(() => void) | null>(null);
   const [isChecklistMode, setIsChecklistMode] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const debouncedContent = useDebounce(content, 800);
+
+  // Get sharing methods from useNotes hook
+  const { shareNote, unshareNote, getCollaborators, isNoteOwner } = useNotes();
 
   // Auto-save when content changes (debounced)
   useEffect(() => {
@@ -128,6 +134,35 @@ const NoteEditor: FC<NoteEditorProps> = ({ note, onBack, onSave, onDelete }) => 
             )} />
           </button>
 
+          {/* Share button */}
+          {note && (
+            <button
+              onClick={() => setShareModalOpen(true)}
+              className={cn(
+                'group relative overflow-hidden rounded-lg p-2 transition-all duration-300',
+                note.sharedWith && note.sharedWith.length > 0
+                  ? 'bg-gradient-to-r from-green-500/40 to-teal-500/40 ring-2 ring-green-400/50'
+                  : 'bg-white/5 hover:bg-white/10',
+                'before:absolute before:inset-0 before:rounded-lg before:bg-gradient-to-r before:from-green-500/20 before:to-teal-500/20 before:opacity-0 before:transition-opacity before:duration-300',
+                (!note.sharedWith || note.sharedWith.length === 0) && 'hover:before:opacity-100'
+              )}
+              aria-label="Share note"
+              title="Поділитися нотаткою"
+            >
+              <Users className={cn(
+                'h-5 w-5 transition-all',
+                note.sharedWith && note.sharedWith.length > 0
+                  ? 'text-green-200 scale-110'
+                  : 'text-white group-hover:scale-110'
+              )} />
+              {note.sharedWith && note.sharedWith.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
+                  {note.sharedWith.length}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Delete button */}
           {note && onDelete && (
             <button
@@ -158,6 +193,19 @@ const NoteEditor: FC<NoteEditorProps> = ({ note, onBack, onSave, onDelete }) => 
           />
         </div>
       </div>
+
+      {/* Share Note Modal */}
+      {note && (
+        <ShareNoteModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          note={note}
+          onShare={(email) => shareNote(note.id, email)}
+          onUnshare={(userId) => unshareNote(note.id, userId)}
+          getCollaborators={getCollaborators}
+          isOwner={isNoteOwner(note)}
+        />
+      )}
     </div>
   );
 };

@@ -11,14 +11,14 @@ importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-com
 
 // Firebase configuration
 // Note: In production, these should match your .env values
-// The service worker cannot access import.meta.env, so we use a fallback pattern
+// The service worker cannot access import.meta.env, so we hardcode the values
 const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_AUTH_DOMAIN',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: 'AIzaSyAxde31tl4RazVOmcC_c14lG2b3wsPXzC0',
+  authDomain: 'just-do-it-c3390.firebaseapp.com',
+  projectId: 'just-do-it-c3390',
+  storageBucket: 'just-do-it-c3390.firebasestorage.app',
+  messagingSenderId: '1057242941805',
+  appId: '1:1057242941805:web:8caea8fb087210f8637264',
 };
 
 // Initialize Firebase in service worker context

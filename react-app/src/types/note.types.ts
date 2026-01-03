@@ -7,6 +7,7 @@ export interface Note {
   createdAt: string;
   updatedAt: string;
   userId: string;
+  sharedWith: string[]; // Array of UIDs with read/write access
 }
 
 export interface CreateNoteInput {
@@ -16,6 +17,22 @@ export interface CreateNoteInput {
 export interface UpdateNoteInput {
   content?: string;
   title?: string;
+}
+
+// Collaborator info for displaying in UI
+export interface NoteCollaborator {
+  uid: string;
+  email: string;
+  displayName: string | null;
+  photoURL: string | null;
+  isOwner: boolean;
+}
+
+// Result of share operation
+export interface ShareNoteResult {
+  success: boolean;
+  message: string;
+  sharedUserId?: string;
 }
 
 export type TextStyle =
