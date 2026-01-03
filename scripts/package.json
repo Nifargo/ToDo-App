@@ -1,0 +1,16 @@
+{
+  "name": "todo-notifications-script",
+  "version": "1.0.0",
+  "description": "Daily push notifications via GitHub Actions",
+  "main": "send-notifications.js",
+  "scripts": {
+    "notify": "node send-notifications.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "web-push": "^3.6.7"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

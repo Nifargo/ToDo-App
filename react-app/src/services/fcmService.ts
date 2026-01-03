@@ -96,6 +96,23 @@ export async function requestFCMToken(options: FCMTokenOptions = {}): Promise<FC
     // Optionally save to Firestore
     if (options.saveToFirestore && options.userId) {
       await saveFCMTokenToFirestore(options.userId, token);
+
+      // ALSO subscribe to Web Push API for iOS compatibility
+      // This creates a subscription that works with standard Web Push
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidKey,
+        });
+
+        // Save Web Push subscription (works for iOS PWA)
+        await saveWebPushSubscription(options.userId, subscription);
+        console.log('✅ Web Push subscription also saved (iOS compatible)');
+      } catch (webPushError) {
+        console.warn('⚠️  Could not create Web Push subscription:', webPushError);
+        // Not critical - FCM token is saved, continue
+      }
     }
 
     return {
@@ -302,6 +319,80 @@ export function setupForegroundMessageHandler(
   });
 
   return unsubscribe;
+}
+
+/**
+ * Save Web Push subscription to Firestore (for iOS/Web Push API compatibility)
+ *
+ * @param userId - User ID to save subscription for
+ * @param subscription - PushSubscription object from service worker
+ * @returns Promise resolving when subscription is saved
+ *
+ * @example
+ * const registration = await navigator.serviceWorker.ready;
+ * const subscription = await registration.pushManager.subscribe({...});
+ * await saveWebPushSubscription('user123', subscription);
+ */
+export async function saveWebPushSubscription(
+  userId: string,
+  subscription: PushSubscription
+): Promise<void> {
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const now = new Date().toISOString();
+
+    // Get device info
+    const { device, platform, userAgent } = getDeviceInfo();
+
+    // Convert PushSubscription to plain object
+    const subscriptionData = {
+      subscription: subscription.toJSON(),
+      device,
+      platform,
+      userAgent,
+      lastUsed: now,
+      addedAt: now,
+    };
+
+    // Get existing subscriptions
+    const userDoc = await getDoc(userDocRef);
+    const userData = userDoc.data();
+    const existingSubscriptions = userData?.webPushSubscriptions || [];
+
+    // Check if this endpoint already exists
+    const endpoint = subscription.endpoint;
+    const existingIndex = existingSubscriptions.findIndex(
+      (s: { subscription: { endpoint: string } }) => s.subscription.endpoint === endpoint
+    );
+
+    if (existingIndex >= 0) {
+      // Update existing subscription
+      existingSubscriptions[existingIndex] = {
+        ...existingSubscriptions[existingIndex],
+        lastUsed: now,
+      };
+
+      await updateDoc(userDocRef, {
+        webPushSubscriptions: existingSubscriptions,
+        updatedAt: now,
+      });
+    } else {
+      // Add new subscription
+      await setDoc(
+        userDocRef,
+        {
+          webPushSubscriptions: arrayUnion(subscriptionData),
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+    }
+
+    console.log(`Web Push subscription saved for device: ${device}`);
+  } catch (error) {
+    console.error('Error saving Web Push subscription:', error);
+    throw error;
+  }
 }
 
 /**

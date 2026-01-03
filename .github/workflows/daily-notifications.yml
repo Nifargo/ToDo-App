@@ -1,0 +1,55 @@
+name: Daily Push Notifications
+
+# Щоденні нотифікації о 9:00 ранку за Києвським часом (UTC+2)
+# Cron працює в UTC, тому 09:00 Kyiv = 07:00 UTC (зима) або 06:00 UTC (літо)
+on:
+  schedule:
+    # Зимовий час: 09:00 Kyiv = 07:00 UTC
+    - cron: '0 7 * * *'
+    # Літній час: 09:00 Kyiv = 06:00 UTC (закоментовано, використовуйте один варіант)
+    # - cron: '0 6 * * *'
+
+  # Дозволити manual запуск для тестування
+  workflow_dispatch:
+
+jobs:
+  send-notifications:
+    name: Send Daily Notifications
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Завантажити код
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Встановити Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scripts/package-lock.json
+
+      # 3. Встановити залежності
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm ci || npm install
+
+      # 4. Запустити скрипт нотифікацій
+      - name: Send push notifications
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: node send-notifications.js
+
+      # 5. Звіт про виконання
+      - name: Notification summary
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Notifications sent successfully"
+          else
+            echo "❌ Notification job failed"
+          fi
