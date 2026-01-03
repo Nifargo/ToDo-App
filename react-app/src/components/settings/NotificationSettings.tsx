@@ -1,4 +1,4 @@
-import { type FC, useState, useEffect, useRef } from 'react';
+import { type FC, useState, useEffect } from 'react';
 import { Bell, Clock } from 'lucide-react';
 import Switch from '@/components/ui/Switch';
 import Input from '@/components/ui/Input';
@@ -30,7 +30,6 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const hasSyncedRef = useRef(false); // Track if we already synced
 
   // Load settings from Firestore
   useEffect(() => {
@@ -58,21 +57,25 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
     loadSettings();
   }, [user, onError]);
 
-  // Sync with browser permission state (run once)
+  // Sync with browser permission state (run once, only for real mismatches)
   useEffect(() => {
     const syncPermissionState = async (): Promise<void> => {
-      if (!user || loading || hasSyncedRef.current) return;
+      if (!user || loading) return;
 
-      // If Firestore says enabled, but browser permission is not granted (includes 'default' and 'denied')
-      if (settings.enabled && permission !== 'granted') {
-        console.warn('⚠️  Notification mismatch detected:');
-        console.warn(`   Firestore: enabled = ${settings.enabled}`);
-        console.warn(`   Browser: permission = ${permission}`);
+      // IMPORTANT: Only sync if permission is 'denied' or if both enabled and permission is still 'default' after delay
+      // Do NOT sync if:
+      // - permission === 'granted' (user has notifications enabled correctly)
+      // - permission === 'default' temporarily (might be loading)
 
-        // Mark as synced to prevent re-running
-        hasSyncedRef.current = true;
+      // If everything is OK, do nothing
+      if (!settings.enabled || permission === 'granted') {
+        return;
+      }
 
-        // Auto-disable in Firestore to match reality
+      // If permission is denied, we should definitely disable
+      if (settings.enabled && permission === 'denied') {
+        console.warn('⚠️  Notification permission DENIED - auto-disabling in Firestore');
+
         const syncedSettings = { ...settings, enabled: false };
 
         try {
@@ -87,12 +90,15 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
           );
 
           setSettings(syncedSettings);
-          console.log('✅ Auto-disabled notifications in Firestore to match browser state');
-          onError('Notifications were auto-disabled. Browser permission was revoked. Please re-enable.');
+          onError('Notifications were disabled. Browser permission was denied.');
         } catch (error) {
           console.error('Failed to sync notification state:', error);
         }
       }
+
+      // If permission is 'default' - do NOT auto-disable
+      // This is normal when first loading Settings
+      // User needs to manually enable to trigger permission request
     };
 
     if (!loading) {
