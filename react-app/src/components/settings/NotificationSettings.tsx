@@ -57,19 +57,22 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
     loadSettings();
   }, [user, onError]);
 
-  // Sync with browser permission state (run once after loading)
+  // Sync with browser permission state
   useEffect(() => {
     const syncPermissionState = async (): Promise<void> => {
-      if (!user || loading) return;
+      if (!user || loading || saving) return;
 
-      // If Firestore says enabled, but browser permission is not granted
+      // If Firestore says enabled, but browser permission is not granted (includes 'default' and 'denied')
       if (settings.enabled && permission !== 'granted') {
-        console.warn('⚠️  Notification mismatch: Firestore enabled but browser permission not granted');
+        console.warn('⚠️  Notification mismatch detected:');
+        console.warn(`   Firestore: enabled = ${settings.enabled}`);
+        console.warn(`   Browser: permission = ${permission}`);
 
         // Auto-disable in Firestore to match reality
         const syncedSettings = { ...settings, enabled: false };
 
         try {
+          setSaving(true); // Prevent infinite loop
           const docRef = doc(db, 'users', user.uid);
           await setDoc(
             docRef,
@@ -81,18 +84,18 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
           );
 
           setSettings(syncedSettings);
+          console.log('✅ Auto-disabled notifications in Firestore to match browser state');
           onError('Notifications were auto-disabled. Browser permission was revoked. Please re-enable.');
         } catch (error) {
           console.error('Failed to sync notification state:', error);
+        } finally {
+          setSaving(false);
         }
       }
     };
 
-    // Only sync once after initial load
-    if (!loading) {
-      syncPermissionState();
-    }
-  }, [loading]); // Only run when loading changes from true to false
+    syncPermissionState();
+  }, [settings.enabled, permission, loading, user]); // Re-check when any of these change
 
   // Save settings to Firestore
   const handleSaveSettings = async (settingsToSave?: NotificationSettingsType): Promise<void> => {
