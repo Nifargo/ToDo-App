@@ -1,15 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import {
-  requestFCMToken,
+  requestPushNotifications,
   deleteFCMToken,
+  unsubscribeWebPush,
   setupForegroundMessageHandler,
-  isFCMSupported,
+  isPushSupported,
+  isIOS,
+  isIOSPWA,
+  isIOSPushSupported,
   requestNotificationPermission,
+  sendTestNotification,
 } from '@/services/fcmService';
 
 /**
- * Notification payload from FCM
+ * Notification payload from FCM/Web Push
  */
 interface NotificationPayload {
   notification?: {
@@ -30,25 +35,22 @@ interface UseNotificationsResult {
   error: Error | null;
   requestPermission: () => Promise<void>;
   revokePermission: () => Promise<void>;
+  sendTest: () => Promise<void>;
   isSupported: boolean;
+  isIOSDevice: boolean;
+  isIOSPWAMode: boolean;
+  requiresHomeScreen: boolean;
 }
 
 /**
- * Custom hook for managing FCM push notifications
- *
- * Features:
- * - Request notification permission
- * - Manage FCM tokens
- * - Handle foreground messages with Toast
- * - Graceful degradation when FCM not available
+ * Custom hook for managing push notifications
+ * 
+ * Supports:
+ * - Firebase Cloud Messaging (FCM) for Chrome/Firefox/Edge
+ * - Standard Web Push API for iOS PWA (16.4+)
  *
  * @param onNotificationReceived - Optional callback for foreground notifications
  * @returns Notification state and control functions
- *
- * @example
- * const { permission, requestPermission, isSupported } = useNotifications((payload) => {
- *   toast.success(payload.notification?.title || 'New notification');
- * });
  */
 export function useNotifications(
   onNotificationReceived?: (payload: NotificationPayload) => void
@@ -60,111 +62,150 @@ export function useNotifications(
   const [error, setError] = useState<Error | null>(null);
   const [isSupported, setIsSupported] = useState<boolean>(false);
 
+  // Platform detection
+  const isIOSDevice = isIOS();
+  const isIOSPWAMode = isIOSPWA();
+  const requiresHomeScreen = isIOSDevice && !isIOSPWAMode;
+
   // Check if notifications are supported
   useEffect(() => {
-    const supported = isFCMSupported();
+    // Basic push support check
+    let supported = isPushSupported();
+
+    // Additional iOS checks
+    if (isIOSDevice) {
+      if (!isIOSPushSupported()) {
+        console.log('[useNotifications] iOS version too old for push');
+        supported = false;
+      } else if (!isIOSPWAMode) {
+        console.log('[useNotifications] iOS requires Home Screen installation');
+        // Still mark as "supported" but will show guidance to user
+        supported = true;
+      }
+    }
+
     setIsSupported(supported);
 
-    if (supported && typeof Notification !== 'undefined') {
+    if (typeof Notification !== 'undefined') {
       setPermission(Notification.permission);
     }
-  }, []);
 
-  // Set up foreground message handler
+    console.log('[useNotifications] Platform:', {
+      isIOSDevice,
+      isIOSPWAMode,
+      isSupported: supported,
+      permission: Notification?.permission
+    });
+  }, [isIOSDevice, isIOSPWAMode]);
+
+  // Set up foreground message handler (not for iOS PWA - they use service worker only)
   useEffect(() => {
-    if (!isSupported || !user) {
+    if (!isSupported || !user || isIOSPWAMode) {
       return;
     }
 
     const unsubscribe = setupForegroundMessageHandler((payload) => {
       const typedPayload = payload as NotificationPayload;
 
-      // Call user-provided callback if available
       if (onNotificationReceived) {
         onNotificationReceived(typedPayload);
-      } else {
-        // Default behavior: show browser notification
-        if (typedPayload.notification) {
-          const { title, body, icon } = typedPayload.notification;
-
-          // Only show notification if permission is granted
-          if (Notification.permission === 'granted') {
-            new Notification(title || 'Notification', {
-              body: body || '',
-              icon: icon || '/icons/icon-192.png',
-              badge: '/icons/icon-192.png',
-              tag: 'task-notification', // Prevent duplicate notifications
-              requireInteraction: false,
-            });
-          }
-        }
+      } else if (typedPayload.notification && Notification.permission === 'granted') {
+        const { title, body, icon } = typedPayload.notification;
+        new Notification(title || 'Notification', {
+          body: body || '',
+          icon: icon || '/ToDo-App/icons/icon-192.png',
+          badge: '/ToDo-App/icons/icon-192.png',
+          tag: 'task-notification',
+          requireInteraction: false,
+        });
       }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [user, isSupported, onNotificationReceived]);
+  }, [user, isSupported, isIOSPWAMode, onNotificationReceived]);
 
   /**
-   * Request notification permission and FCM token
+   * Request notification permission and set up push subscription
    */
   const requestPermission = useCallback(async (): Promise<void> => {
+    // Check if iOS but not in PWA mode
+    if (isIOSDevice && !isIOSPWAMode) {
+      setError(new Error('Please add this app to your Home Screen first, then enable notifications.'));
+      throw new Error('iOS requires Home Screen installation');
+    }
+
     if (!isSupported) {
       setError(new Error('Notifications not supported in this browser'));
-      return;
+      throw new Error('Notifications not supported');
     }
 
     try {
       setLoading(true);
       setError(null);
 
-      // Request browser notification permission
-      const permission = await requestNotificationPermission();
-      setPermission(permission);
-
-      if (permission !== 'granted') {
-        throw new Error('Notification permission denied');
-      }
-
-      // Request FCM token
-      const result = await requestFCMToken({
+      // Use unified push notifications function
+      const result = await requestPushNotifications({
         userId: user?.uid,
         saveToFirestore: true,
       });
 
+      // Update permission state
+      if (typeof Notification !== 'undefined') {
+        setPermission(Notification.permission);
+      }
+
       if (!result.success) {
-        throw result.error || new Error('Failed to get FCM token');
+        throw result.error || new Error('Failed to set up notifications');
       }
 
       setToken(result.token || null);
+      console.log('[useNotifications] Push setup successful:', result.platform);
+
     } catch (err) {
-      console.error('Error requesting notification permission:', err);
+      console.error('[useNotifications] Error:', err);
       setError(err as Error);
-      throw err; // Re-throw to allow caller to handle
+      throw err;
     } finally {
       setLoading(false);
     }
-  }, [isSupported, user]);
+  }, [isSupported, isIOSDevice, isIOSPWAMode, user]);
 
   /**
-   * Revoke FCM token (call on sign out or disable notifications)
+   * Revoke push subscription (call on sign out or disable notifications)
    */
   const revokePermission = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
+      // Delete FCM token
       await deleteFCMToken(user?.uid);
+      
+      // Also unsubscribe from Web Push
+      await unsubscribeWebPush(user?.uid);
+      
       setToken(null);
     } catch (err) {
-      console.error('Error revoking FCM token:', err);
+      console.error('[useNotifications] Error revoking:', err);
       setError(err as Error);
-      // Don't throw - token revocation should not block operations
     } finally {
       setLoading(false);
     }
   }, [user]);
+
+  /**
+   * Send a test notification
+   */
+  const sendTest = useCallback(async (): Promise<void> => {
+    try {
+      await sendTestNotification();
+    } catch (err) {
+      console.error('[useNotifications] Test notification error:', err);
+      throw err;
+    }
+  }, []);
 
   return {
     permission,
@@ -173,6 +214,10 @@ export function useNotifications(
     error,
     requestPermission,
     revokePermission,
+    sendTest,
     isSupported,
+    isIOSDevice,
+    isIOSPWAMode,
+    requiresHomeScreen,
   };
 }

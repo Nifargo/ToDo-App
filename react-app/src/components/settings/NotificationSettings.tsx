@@ -18,7 +18,16 @@ interface NotificationSettingsProps {
 
 const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onError, onClose }) => {
   const { user } = useAuth();
-  const { permission, requestPermission, loading: permissionLoading, isSupported } = useNotifications();
+  const { 
+    permission, 
+    requestPermission, 
+    sendTest,
+    loading: permissionLoading, 
+    isSupported,
+    isIOSDevice,
+    isIOSPWAMode,
+    requiresHomeScreen
+  } = useNotifications();
 
   const [settings, setSettings] = useState<NotificationSettingsType>({
     enabled: false,
@@ -181,6 +190,24 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
 
   return (
     <div className="space-y-6">
+      {/* iOS Home Screen requirement */}
+      {requiresHomeScreen && (
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 backdrop-blur-xl animate-fade-in">
+          <p className="text-sm text-white/80 font-semibold mb-2">
+            📱 Add to Home Screen Required
+          </p>
+          <p className="text-sm text-white/70 mb-2">
+            To enable notifications on iOS:
+          </p>
+          <ol className="text-sm text-white/70 list-decimal list-inside space-y-1">
+            <li>Tap the Share button (📤) in Safari</li>
+            <li>Select "Add to Home Screen"</li>
+            <li>Open the app from your Home Screen</li>
+            <li>Then enable notifications here</li>
+          </ol>
+        </div>
+      )}
+
       {/* Warning if notifications not supported (only show on non-HTTPS) */}
       {!isSupported && window.location.protocol !== 'https:' && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 backdrop-blur-xl animate-fade-in">
@@ -197,11 +224,27 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
           <p className="text-sm text-white/80 font-semibold mb-2">
             ⚠️ Notification Permission Lost
           </p>
-          <p className="text-sm text-white/70">
+          <p className="text-sm text-white/70 mb-3">
             Notifications are enabled in settings, but browser permission is missing.
             This can happen after clearing browser data or reinstalling the app.
-            Please toggle notifications off and on again to restore permission.
           </p>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={async () => {
+              try {
+                await requestPermission();
+                onSuccess('Notifications restored successfully!');
+              } catch (error) {
+                console.error('Error restoring permission:', error);
+                onError('Failed to restore notifications. Please check your browser settings.');
+              }
+            }}
+            loading={permissionLoading}
+            className="bg-orange-500 hover:bg-orange-600 text-white border-0"
+          >
+            🔔 Restore Notifications
+          </Button>
         </div>
       )}
 
@@ -217,14 +260,39 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
         <Switch
           checked={settings.enabled}
           onChange={(e) => handleEnableNotifications(e.target.checked)}
-          disabled={permissionLoading}
+          disabled={permissionLoading || requiresHomeScreen}
           label="Enable Notifications"
           description={
-            permission === 'denied'
+            requiresHomeScreen
+              ? 'Add app to Home Screen first (see above)'
+              : permission === 'denied'
               ? 'Notifications are blocked. Please enable them in your browser settings.'
+              : isIOSPWAMode
+              ? 'Receive push notifications on your iPhone'
               : 'Receive push notifications for your tasks'
           }
         />
+
+        {/* Test Notification Button */}
+        {settings.enabled && permission === 'granted' && (
+          <div className="mt-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await sendTest();
+                  onSuccess('Test notification sent!');
+                } catch (error) {
+                  onError('Failed to send test notification');
+                }
+              }}
+              className="border border-white/30 bg-white/20 text-white hover:bg-white/30"
+            >
+              🔔 Send Test Notification
+            </Button>
+          </div>
+        )}
 
         {permission === 'denied' && (
           <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 backdrop-blur-xl">
