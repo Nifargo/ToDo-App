@@ -1,11 +1,14 @@
 /**
- * FCM Service - Firebase Cloud Messaging Token Management
- *
- * Handles FCM token lifecycle:
- * - Request and retrieve FCM tokens
- * - Save tokens to Firestore
- * - Delete tokens on sign out
- * - Handle token refresh events
+ * Push Notifications Service
+ * 
+ * Supports:
+ * - Firebase Cloud Messaging (FCM) for Chrome/Firefox/Edge
+ * - Standard Web Push API for iOS PWA (16.4+)
+ * 
+ * iOS PWA requires:
+ * - iOS 16.4 or later
+ * - App added to Home Screen (standalone mode)
+ * - Permission granted AFTER installation
  */
 
 import { getToken, deleteToken, onMessage, type Messaging } from 'firebase/messaging';
@@ -13,147 +16,285 @@ import { doc, setDoc, updateDoc, getDoc, arrayUnion, arrayRemove } from 'firebas
 import { messaging, db } from '@/config/firebase';
 import type { FCMTokenData } from '@/types/user.types';
 
+// VAPID public key for Web Push
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || 
+  'BAx2-XuP9uTBN1yD_kw7s8FyM4yD-vkw1pI93_x0b33hCKWiF6Fmgi0LBaS-IRsuGUIP8PAMtuJiKZnUmfI2UOk';
+
 /**
- * Result of FCM token request operation
+ * Convert base64 VAPID key to Uint8Array
  */
-export interface FCMTokenResult {
-  success: boolean;
-  token?: string;
-  error?: Error;
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
 
 /**
- * Options for requesting FCM token
+ * Check if running on iOS
  */
-export interface FCMTokenOptions {
-  vapidKey?: string;
+export function isIOS(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as { MSStream: unknown }).MSStream;
+}
+
+/**
+ * Check if running as iOS PWA (standalone mode)
+ */
+export function isIOSPWA(): boolean {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       (navigator as unknown as { standalone: boolean }).standalone === true;
+  return isIOS() && isStandalone;
+}
+
+/**
+ * Get iOS version
+ */
+export function getIOSVersion(): { major: number; minor: number; patch: number } | null {
+  const match = navigator.userAgent.match(/OS (\d+)_(\d+)_?(\d+)?/);
+  if (match) {
+    return {
+      major: parseInt(match[1], 10),
+      minor: parseInt(match[2], 10),
+      patch: parseInt(match[3] || '0', 10)
+    };
+  }
+  return null;
+}
+
+/**
+ * Check if iOS version supports Web Push (16.4+)
+ */
+export function isIOSPushSupported(): boolean {
+  if (!isIOS()) return true;
+  
+  const version = getIOSVersion();
+  if (!version) return false;
+  
+  return version.major > 16 || (version.major === 16 && version.minor >= 4);
+}
+
+/**
+ * Result of push notification setup
+ */
+export interface PushSetupResult {
+  success: boolean;
+  token?: string;
+  subscription?: PushSubscription;
+  error?: Error;
+  platform: 'ios-pwa' | 'ios-safari' | 'web' | 'unsupported';
+}
+
+/**
+ * Options for requesting push notifications
+ */
+export interface PushNotificationOptions {
   userId?: string;
   saveToFirestore?: boolean;
 }
 
 /**
- * Request FCM token from Firebase Messaging
- *
- * @param options - Configuration options for token request
- * @returns Promise resolving to FCM token result
- *
- * @example
- * const result = await requestFCMToken({
- *   vapidKey: 'your-vapid-key',
- *   userId: 'user123',
- *   saveToFirestore: true
- * });
- *
- * if (result.success) {
- *   console.log('FCM Token:', result.token);
- * }
+ * Request push notifications - works on both FCM and iOS PWA
  */
-export async function requestFCMToken(options: FCMTokenOptions = {}): Promise<FCMTokenResult> {
+export async function requestPushNotifications(options: PushNotificationOptions = {}): Promise<PushSetupResult> {
+  const platform = isIOSPWA() ? 'ios-pwa' : (isIOS() ? 'ios-safari' : 'web');
+  
+  console.log('[Push] Platform:', platform);
+  console.log('[Push] iOS version:', getIOSVersion());
+
+  // Check basic support
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    return {
+      success: false,
+      error: new Error('Push notifications not supported'),
+      platform: 'unsupported'
+    };
+  }
+
+  // Check iOS requirements
+  if (isIOS()) {
+    if (!isIOSPushSupported()) {
+      return {
+        success: false,
+        error: new Error('iOS 16.4+ required for push notifications'),
+        platform
+      };
+    }
+    
+    if (!isIOSPWA()) {
+      return {
+        success: false,
+        error: new Error('Add to Home Screen to enable notifications on iOS'),
+        platform: 'ios-safari'
+      };
+    }
+  }
+
+  // Check permission
+  if (Notification.permission === 'denied') {
+    return {
+      success: false,
+      error: new Error('Notifications blocked. Enable in device settings.'),
+      platform
+    };
+  }
+
   try {
-    // Check if messaging is supported
-    if (!messaging) {
-      return {
-        success: false,
-        error: new Error('Firebase Messaging is not supported in this browser'),
-      };
-    }
-
-    // Check notification permission
-    if (typeof Notification === 'undefined') {
-      return {
-        success: false,
-        error: new Error('Notifications are not supported in this browser'),
-      };
-    }
-
+    // Request permission if needed
     if (Notification.permission !== 'granted') {
-      return {
-        success: false,
-        error: new Error('Notification permission not granted'),
-      };
-    }
-
-    // Get VAPID key from options or environment
-    const vapidKey = options.vapidKey || import.meta.env.VITE_FIREBASE_VAPID_KEY;
-
-    if (!vapidKey) {
-      return {
-        success: false,
-        error: new Error('VAPID key not configured'),
-      };
-    }
-
-    // Request FCM token
-    const token = await getToken(messaging as Messaging, { vapidKey });
-
-    if (!token) {
-      return {
-        success: false,
-        error: new Error('Failed to retrieve FCM token'),
-      };
-    }
-
-    // Optionally save to Firestore
-    if (options.saveToFirestore && options.userId) {
-      await saveFCMTokenToFirestore(options.userId, token);
-
-      // ALSO subscribe to Web Push API for iOS compatibility
-      // This creates a subscription that works with standard Web Push
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: vapidKey,
-        });
-
-        // Save Web Push subscription (works for iOS PWA)
-        await saveWebPushSubscription(options.userId, subscription);
-        console.log('✅ Web Push subscription also saved (iOS compatible)');
-      } catch (webPushError) {
-        console.warn('⚠️  Could not create Web Push subscription:', webPushError);
-        // Not critical - FCM token is saved, continue
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        return {
+          success: false,
+          error: new Error('Notification permission not granted'),
+          platform
+        };
       }
     }
 
-    return {
-      success: true,
-      token,
-    };
+    // For iOS PWA, use standard Web Push API directly
+    if (isIOSPWA()) {
+      console.log('[Push] Using Web Push API for iOS PWA');
+      return await setupWebPushSubscription(options);
+    }
+
+    // For other browsers, try FCM first, fall back to Web Push
+    if (messaging) {
+      console.log('[Push] Using Firebase Cloud Messaging');
+      const fcmResult = await setupFCMToken(options);
+      
+      // Also create Web Push subscription for compatibility
+      if (fcmResult.success && options.userId) {
+        try {
+          await setupWebPushSubscription({ ...options, saveToFirestore: true });
+        } catch (e) {
+          console.warn('[Push] Web Push subscription failed (FCM will still work):', e);
+        }
+      }
+      
+      return fcmResult;
+    }
+
+    // Fall back to Web Push only
+    console.log('[Push] FCM not available, using Web Push API');
+    return await setupWebPushSubscription(options);
+
   } catch (error) {
-    console.error('Error requesting FCM token:', error);
+    console.error('[Push] Setup error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error : new Error('Unknown error requesting FCM token'),
+      error: error instanceof Error ? error : new Error('Unknown error'),
+      platform
     };
   }
 }
 
 /**
- * Get device information for FCM token
- *
- * @returns Device info object
+ * Setup FCM token (for Chrome/Firefox)
+ */
+async function setupFCMToken(options: PushNotificationOptions): Promise<PushSetupResult> {
+  const platform = isIOSPWA() ? 'ios-pwa' : (isIOS() ? 'ios-safari' : 'web');
+  
+  try {
+    if (!messaging) {
+      throw new Error('Firebase Messaging not available');
+    }
+
+    const token = await getToken(messaging as Messaging, { vapidKey: VAPID_PUBLIC_KEY });
+
+    if (!token) {
+      throw new Error('Failed to get FCM token');
+    }
+
+    if (options.saveToFirestore && options.userId) {
+      await saveFCMTokenToFirestore(options.userId, token);
+    }
+
+    return {
+      success: true,
+      token,
+      platform
+    };
+  } catch (error) {
+    console.error('[Push] FCM setup error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error : new Error('FCM setup failed'),
+      platform
+    };
+  }
+}
+
+/**
+ * Setup Web Push subscription (works on iOS PWA)
+ */
+async function setupWebPushSubscription(options: PushNotificationOptions): Promise<PushSetupResult> {
+  const platform = isIOSPWA() ? 'ios-pwa' : (isIOS() ? 'ios-safari' : 'web');
+  
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    console.log('[Push] Service Worker ready');
+
+    // Check for existing subscription
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      // Create new subscription
+      console.log('[Push] Creating new subscription...');
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+
+    console.log('[Push] Subscription:', subscription.endpoint);
+
+    if (options.saveToFirestore && options.userId) {
+      await saveWebPushSubscription(options.userId, subscription);
+    }
+
+    return {
+      success: true,
+      subscription,
+      platform
+    };
+  } catch (error) {
+    console.error('[Push] Web Push setup error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error : new Error('Web Push setup failed'),
+      platform
+    };
+  }
+}
+
+/**
+ * Get device information
  */
 function getDeviceInfo(): { device: string; platform: 'web' | 'mobile' | 'desktop'; userAgent: string } {
   const ua = navigator.userAgent;
   let device = 'Unknown Device';
   let platform: 'web' | 'mobile' | 'desktop' = 'web';
 
-  // Detect mobile
   if (/Mobile|Android|iPhone|iPad|iPod/i.test(ua)) {
     platform = 'mobile';
     if (/iPhone/i.test(ua)) device = 'iPhone';
     else if (/iPad/i.test(ua)) device = 'iPad';
     else if (/Android/i.test(ua)) device = 'Android';
-  }
-  // Detect desktop
-  else {
+  } else {
     platform = 'desktop';
     if (/Mac/i.test(ua)) device = 'Mac';
     else if (/Win/i.test(ua)) device = 'Windows';
     else if (/Linux/i.test(ua)) device = 'Linux';
   }
 
-  // Add browser info
   if (/Chrome/i.test(ua)) device += '/Chrome';
   else if (/Safari/i.test(ua)) device += '/Safari';
   else if (/Firefox/i.test(ua)) device += '/Firefox';
@@ -163,28 +304,14 @@ function getDeviceInfo(): { device: string; platform: 'web' | 'mobile' | 'deskto
 }
 
 /**
- * Save FCM token to Firestore user document (as array for multi-device support)
- *
- * @param userId - User ID to save token for
- * @param token - FCM token to save
- * @returns Promise resolving when token is saved
- *
- * @example
- * await saveFCMTokenToFirestore('user123', 'fcm-token-xyz');
+ * Save FCM token to Firestore
  */
 export async function saveFCMTokenToFirestore(userId: string, token: string): Promise<void> {
   try {
     const userDocRef = doc(db, 'users', userId);
     const now = new Date().toISOString();
-
-    // Get current user doc to check existing tokens
-    const userDoc = await getDoc(userDocRef);
-    const userData = userDoc.data();
-
-    // Get device info
     const { device, platform, userAgent } = getDeviceInfo();
 
-    // Create token data object
     const tokenData: FCMTokenData = {
       token,
       device,
@@ -194,86 +321,109 @@ export async function saveFCMTokenToFirestore(userId: string, token: string): Pr
       addedAt: now,
     };
 
-    // Get existing tokens array
+    const userDoc = await getDoc(userDocRef);
+    const userData = userDoc.data();
     const existingTokens: FCMTokenData[] = userData?.fcmTokens || [];
-
-    // Check if this token already exists
     const existingTokenIndex = existingTokens.findIndex((t) => t.token === token);
 
     if (existingTokenIndex >= 0) {
-      // Update existing token's lastUsed
-      existingTokens[existingTokenIndex] = {
-        ...existingTokens[existingTokenIndex],
-        lastUsed: now,
-      };
-
+      existingTokens[existingTokenIndex] = { ...existingTokens[existingTokenIndex], lastUsed: now };
       await updateDoc(userDocRef, {
         fcmTokens: existingTokens,
-        fcmToken: token, // Keep for backwards compatibility
+        fcmToken: token,
         updatedAt: now,
       });
     } else {
-      // Add new token to array
-      await setDoc(
-        userDocRef,
-        {
-          fcmTokens: arrayUnion(tokenData),
-          fcmToken: token, // Keep for backwards compatibility
-          updatedAt: now,
-        },
-        { merge: true }
-      );
+      await setDoc(userDocRef, {
+        fcmTokens: arrayUnion(tokenData),
+        fcmToken: token,
+        updatedAt: now,
+      }, { merge: true });
     }
 
-    console.log(`FCM token saved for device: ${device}`);
+    console.log(`[Push] FCM token saved for: ${device}`);
   } catch (error) {
-    console.error('Error saving FCM token to Firestore:', error);
+    console.error('[Push] Error saving FCM token:', error);
     throw error;
   }
 }
 
 /**
- * Delete FCM token from device and Firestore (removes from tokens array)
- *
- * Call this on sign out to remove the token association
- *
- * @param userId - User ID to delete token for
- * @param currentToken - Optional current FCM token to remove (if not provided, will get from messaging)
- * @returns Promise resolving when token is deleted
- *
- * @example
- * await deleteFCMToken('user123');
+ * Save Web Push subscription to Firestore
+ */
+export async function saveWebPushSubscription(userId: string, subscription: PushSubscription): Promise<void> {
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const now = new Date().toISOString();
+    const { device, platform, userAgent } = getDeviceInfo();
+
+    const subscriptionData = {
+      subscription: subscription.toJSON(),
+      device,
+      platform,
+      userAgent,
+      createdAt: now,
+      lastUsed: now,
+    };
+
+    const userDoc = await getDoc(userDocRef);
+    const userData = userDoc.data();
+    const existingSubscriptions = userData?.webPushSubscriptions || [];
+
+    const endpoint = subscription.endpoint;
+    const existingIndex = existingSubscriptions.findIndex(
+      (s: { subscription: { endpoint: string } }) => s.subscription?.endpoint === endpoint
+    );
+
+    if (existingIndex >= 0) {
+      existingSubscriptions[existingIndex] = { ...existingSubscriptions[existingIndex], lastUsed: now };
+      await updateDoc(userDocRef, {
+        webPushSubscriptions: existingSubscriptions,
+        'notificationSettings.enabled': true,
+        updatedAt: now,
+      });
+    } else {
+      await setDoc(userDocRef, {
+        webPushSubscriptions: arrayUnion(subscriptionData),
+        notificationSettings: {
+          enabled: true,
+          updatedAt: now,
+        },
+        updatedAt: now,
+      }, { merge: true });
+    }
+
+    console.log(`[Push] Web Push subscription saved for: ${device}`);
+  } catch (error) {
+    console.error('[Push] Error saving subscription:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete FCM token
  */
 export async function deleteFCMToken(userId?: string, currentToken?: string): Promise<void> {
   try {
-    // Get current token if not provided
     let tokenToDelete = currentToken;
     if (!tokenToDelete && messaging) {
       try {
-        const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-        if (vapidKey) {
-          tokenToDelete = await getToken(messaging as Messaging, { vapidKey });
-        }
+        tokenToDelete = await getToken(messaging as Messaging, { vapidKey: VAPID_PUBLIC_KEY });
       } catch (err) {
-        console.warn('Could not get current token for deletion:', err);
+        console.warn('[Push] Could not get current token:', err);
       }
     }
 
-    // Delete token from messaging instance
     if (messaging) {
       await deleteToken(messaging as Messaging);
     }
 
-    // Remove token from Firestore if userId provided
     if (userId && tokenToDelete) {
       const userDocRef = doc(db, 'users', userId);
-
-      // Get current user doc to find the token to remove
       const userDoc = await getDoc(userDocRef);
       const userData = userDoc.data();
       const existingTokens: FCMTokenData[] = userData?.fcmTokens || [];
 
-      // Find and remove the token from array
       const tokenToRemove = existingTokens.find((t) => t.token === tokenToDelete);
 
       if (tokenToRemove) {
@@ -281,37 +431,60 @@ export async function deleteFCMToken(userId?: string, currentToken?: string): Pr
           fcmTokens: arrayRemove(tokenToRemove),
           updatedAt: new Date().toISOString(),
         });
-
-        console.log(`FCM token removed for device: ${tokenToRemove.device}`);
+        console.log(`[Push] FCM token removed for: ${tokenToRemove.device}`);
       }
     }
   } catch (error) {
-    console.error('Error deleting FCM token:', error);
-    // Don't throw - token deletion should not block sign out
+    console.error('[Push] Error deleting token:', error);
+  }
+}
+
+/**
+ * Unsubscribe from Web Push
+ */
+export async function unsubscribeWebPush(userId?: string): Promise<void> {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      const endpoint = subscription.endpoint;
+      await subscription.unsubscribe();
+
+      if (userId) {
+        const userDocRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userDocRef);
+        const userData = userDoc.data();
+        const subscriptions = userData?.webPushSubscriptions || [];
+
+        const toRemove = subscriptions.find(
+          (s: { subscription: { endpoint: string } }) => s.subscription?.endpoint === endpoint
+        );
+
+        if (toRemove) {
+          await updateDoc(userDocRef, {
+            webPushSubscriptions: arrayRemove(toRemove),
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      console.log('[Push] Unsubscribed from Web Push');
+    }
+  } catch (error) {
+    console.error('[Push] Error unsubscribing:', error);
   }
 }
 
 /**
  * Set up foreground message handler
- *
- * @param onMessageReceived - Callback to handle received messages
- * @returns Unsubscribe function to clean up listener
- *
- * @example
- * const unsubscribe = setupForegroundMessageHandler((payload) => {
- *   console.log('Message received:', payload);
- *   showToast(payload.notification?.title || 'Notification');
- * });
- *
- * // Clean up on unmount
- * return () => unsubscribe();
  */
 export function setupForegroundMessageHandler(
   onMessageReceived: (payload: unknown) => void
 ): () => void {
   if (!messaging) {
-    console.warn('Messaging not available - foreground messages will not be received');
-    return () => {}; // Return no-op unsubscribe
+    console.warn('[Push] Messaging not available');
+    return () => {};
   }
 
   const unsubscribe = onMessage(messaging as Messaging, (payload) => {
@@ -322,107 +495,26 @@ export function setupForegroundMessageHandler(
 }
 
 /**
- * Save Web Push subscription to Firestore (for iOS/Web Push API compatibility)
- *
- * @param userId - User ID to save subscription for
- * @param subscription - PushSubscription object from service worker
- * @returns Promise resolving when subscription is saved
- *
- * @example
- * const registration = await navigator.serviceWorker.ready;
- * const subscription = await registration.pushManager.subscribe({...});
- * await saveWebPushSubscription('user123', subscription);
+ * Check if push notifications are supported
  */
-export async function saveWebPushSubscription(
-  userId: string,
-  subscription: PushSubscription
-): Promise<void> {
-  try {
-    const userDocRef = doc(db, 'users', userId);
-    const now = new Date().toISOString();
-
-    // Get device info
-    const { device, platform, userAgent } = getDeviceInfo();
-
-    // Convert PushSubscription to plain object
-    const subscriptionData = {
-      subscription: subscription.toJSON(),
-      device,
-      platform,
-      userAgent,
-      lastUsed: now,
-      addedAt: now,
-    };
-
-    // Get existing subscriptions
-    const userDoc = await getDoc(userDocRef);
-    const userData = userDoc.data();
-    const existingSubscriptions = userData?.webPushSubscriptions || [];
-
-    // Check if this endpoint already exists
-    const endpoint = subscription.endpoint;
-    const existingIndex = existingSubscriptions.findIndex(
-      (s: { subscription: { endpoint: string } }) => s.subscription.endpoint === endpoint
-    );
-
-    if (existingIndex >= 0) {
-      // Update existing subscription
-      existingSubscriptions[existingIndex] = {
-        ...existingSubscriptions[existingIndex],
-        lastUsed: now,
-      };
-
-      await updateDoc(userDocRef, {
-        webPushSubscriptions: existingSubscriptions,
-        updatedAt: now,
-      });
-    } else {
-      // Add new subscription
-      await setDoc(
-        userDocRef,
-        {
-          webPushSubscriptions: arrayUnion(subscriptionData),
-          updatedAt: now,
-        },
-        { merge: true }
-      );
-    }
-
-    console.log(`Web Push subscription saved for device: ${device}`);
-  } catch (error) {
-    console.error('Error saving Web Push subscription:', error);
-    throw error;
-  }
-}
-
-/**
- * Check if FCM is supported in current environment
- *
- * @returns True if FCM is supported and enabled
- *
- * @example
- * if (isFCMSupported()) {
- *   await requestFCMToken();
- * }
- */
-export function isFCMSupported(): boolean {
+export function isPushSupported(): boolean {
   return (
     typeof window !== 'undefined' &&
-    'Notification' in window &&
-    messaging !== null
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window
   );
 }
 
 /**
- * Request notification permission from browser
- *
- * @returns Promise resolving to granted permission status
- *
- * @example
- * const permission = await requestNotificationPermission();
- * if (permission === 'granted') {
- *   await requestFCMToken();
- * }
+ * Check if FCM is supported
+ */
+export function isFCMSupported(): boolean {
+  return isPushSupported() && messaging !== null;
+}
+
+/**
+ * Request notification permission
  */
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (typeof Notification === 'undefined') {
@@ -433,6 +525,32 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
     return 'granted';
   }
 
-  const permission = await Notification.requestPermission();
-  return permission;
+  return await Notification.requestPermission();
 }
+
+/**
+ * Send a local test notification
+ */
+export async function sendTestNotification(): Promise<void> {
+  if (Notification.permission !== 'granted') {
+    throw new Error('Notification permission not granted');
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+  
+  await registration.showNotification('Тестова нотифікація 🎉', {
+    body: 'Push нотифікації працюють! Все налаштовано правильно.',
+    icon: '/ToDo-App/icons/icon-192.png',
+    badge: '/ToDo-App/icons/icon-72.png',
+    vibrate: [200, 100, 200],
+    tag: 'test-notification',
+    data: { url: '/ToDo-App/' }
+  });
+
+  console.log('[Push] Test notification sent');
+}
+
+// Legacy exports for backwards compatibility
+export const requestFCMToken = requestPushNotifications;
+export type FCMTokenResult = PushSetupResult;
+export type FCMTokenOptions = PushNotificationOptions;

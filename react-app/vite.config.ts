@@ -10,15 +10,54 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png', 'firebase-messaging-sw.js'],
+      includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
       manifest: {
-        name: 'My Tasks',
-        short_name: 'Tasks',
-        description: 'Modern task management app with iOS 18 Liquid Glass design',
+        name: 'Мої Справи - ToDo List',
+        short_name: 'Мої Справи',
+        description: 'Простий та зручний додаток для управління завданнями',
         theme_color: '#6366f1',
         background_color: '#ffffff',
         display: 'standalone',
+        start_url: '/ToDo-App/',
+        scope: '/ToDo-App/',
+        lang: 'uk',
+        orientation: 'portrait',
         icons: [
+          {
+            src: 'icons/icon-72.png',
+            sizes: '72x72',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/icon-96.png',
+            sizes: '96x96',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/icon-128.png',
+            sizes: '128x128',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/icon-144.png',
+            sizes: '144x144',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/icon-152.png',
+            sizes: '152x152',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/icon-167.png',
+            sizes: '167x167',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/icon-180.png',
+            sizes: '180x180',
+            type: 'image/png',
+          },
           {
             src: 'icons/icon-192.png',
             sizes: '192x192',
@@ -30,11 +69,11 @@ export default defineConfig({
             type: 'image/png',
           },
         ],
+        categories: ['productivity', 'utilities'],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Don't precache the FCM service worker - it needs to be registered separately
-        navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/],
+        navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/, /^\/sw\.js$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
@@ -43,7 +82,7 @@ export default defineConfig({
               cacheName: 'firebase-storage-cache',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 30,
               },
             },
           },
@@ -54,13 +93,12 @@ export default defineConfig({
               cacheName: 'firebase-sdk-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 30,
               },
             },
           },
         ],
       },
-      // Allow the FCM service worker to be served from public directory
       injectRegister: 'auto',
       devOptions: {
         enabled: true,
@@ -81,34 +119,20 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // React core libraries
           'react-vendor': ['react', 'react-dom'],
-
-          // Firebase - separate chunk for large library
           'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-
-          // React Query and state management
           'query-vendor': ['@tanstack/react-query', 'zustand'],
-
-          // UI libraries
           'ui-vendor': ['lucide-react', 'react-swipeable'],
-
-          // Date utilities
           'date-vendor': ['date-fns'],
-
-          // Utility libraries
           'utils-vendor': ['clsx', 'tailwind-merge'],
         },
       },
     },
-    // Increase chunk size warning limit to 600 KB
     chunkSizeWarningLimit: 600,
-
-    // Enable minification
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Remove console.logs in production
+        drop_console: true,
         drop_debugger: true,
       },
     },
