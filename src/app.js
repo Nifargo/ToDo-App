@@ -569,16 +569,26 @@ class TodoApp {
 
     // Settings methods
     updateSettingsStatus() {
+        // Platform info for debugging
+        const platformInfo = typeof WebPush !== 'undefined' 
+            ? `${WebPush.isIOSPWA() ? 'iOS PWA' : (WebPush.isIOS() ? 'iOS Safari' : 'Web')}`
+            : 'Unknown';
+        console.log('[Settings] Platform:', platformInfo);
+
         // Update browser permission status
-        if (Notification.permission === 'granted') {
-            this.browserStatus.textContent = 'Allowed';
+        if (!('Notification' in window)) {
+            this.browserStatus.textContent = 'Not supported';
+            this.browserStatus.classList.add('error');
+            this.browserStatus.classList.remove('success');
+        } else if (Notification.permission === 'granted') {
+            this.browserStatus.textContent = 'Allowed ✓';
             this.browserStatus.classList.add('success');
             this.browserStatus.classList.remove('error');
             this.toggleNotificationsBtn.classList.add('enabled');
             this.toggleNotificationsBtn.querySelector('.toggle-label').textContent = 'Enabled';
             this.testNotificationBtn.disabled = false;
         } else if (Notification.permission === 'denied') {
-            this.browserStatus.textContent = 'Blocked';
+            this.browserStatus.textContent = 'Blocked ✗';
             this.browserStatus.classList.add('error');
             this.browserStatus.classList.remove('success');
             this.toggleNotificationsBtn.classList.remove('enabled');
@@ -594,12 +604,28 @@ class TodoApp {
 
         // Update service worker status
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(() => {
-                this.serviceStatus.textContent = 'Connected';
+            navigator.serviceWorker.ready.then(async (registration) => {
+                this.serviceStatus.textContent = 'Active ✓';
                 this.serviceStatus.classList.add('success');
                 this.serviceStatus.classList.remove('error');
+
+                // Check push subscription
+                if (typeof WebPush !== 'undefined') {
+                    const subscription = await WebPush.getCurrentSubscription();
+                    if (subscription) {
+                        this.tokenStatus.textContent = 'Subscribed ✓';
+                        this.tokenStatus.classList.add('success');
+                        this.tokenStatus.classList.remove('error');
+                    } else {
+                        this.tokenStatus.textContent = 'Not subscribed';
+                        this.tokenStatus.classList.remove('error', 'success');
+                    }
+                } else {
+                    this.tokenStatus.textContent = Notification.permission === 'granted' ? 'Available' : 'Not available';
+                    this.tokenStatus.classList.toggle('success', Notification.permission === 'granted');
+                }
             }).catch(() => {
-                this.serviceStatus.textContent = 'Disconnected';
+                this.serviceStatus.textContent = 'Error';
                 this.serviceStatus.classList.add('error');
                 this.serviceStatus.classList.remove('success');
             });
@@ -607,16 +633,6 @@ class TodoApp {
             this.serviceStatus.textContent = 'Not supported';
             this.serviceStatus.classList.add('error');
             this.serviceStatus.classList.remove('success');
-        }
-
-        // Update FCM token status
-        if (Notification.permission === 'granted') {
-            this.tokenStatus.textContent = 'Available';
-            this.tokenStatus.classList.add('success');
-            this.tokenStatus.classList.remove('error');
-        } else {
-            this.tokenStatus.textContent = 'Not available';
-            this.tokenStatus.classList.remove('error', 'success');
         }
 
         // Load and set notification time and checkboxes
@@ -636,12 +652,50 @@ class TodoApp {
     }
 
     async handleToggleNotifications() {
-        if (Notification.permission === 'granted') {
-            alert('Notifications already enabled!');
+        // Check if WebPush module is available
+        if (typeof WebPush === 'undefined') {
+            alert('Push notifications module not loaded. Please refresh the page.');
             return;
         }
 
-        await this.requestNotificationPermission();
+        // Check platform requirements
+        if (WebPush.isIOS() && !WebPush.isIOSPushSupported()) {
+            alert('Push notifications require iOS 16.4 or later. Please update your device.');
+            return;
+        }
+
+        if (WebPush.isIOS() && !WebPush.isIOSPWA()) {
+            alert('To enable notifications on iOS:\n\n1. Tap the Share button\n2. Select "Add to Home Screen"\n3. Open the app from Home Screen\n4. Then enable notifications');
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            // Already enabled - offer to disable
+            const confirmDisable = confirm('Notifications are enabled. Do you want to disable them?');
+            if (confirmDisable) {
+                const userId = this.getUserId();
+                await WebPush.disablePushNotifications(userId);
+                this.updateSettingsStatus();
+                alert('Notifications disabled.');
+            }
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            alert('Notifications are blocked.\n\nTo enable:\n1. Go to browser/device settings\n2. Find this website\n3. Allow notifications');
+            return;
+        }
+
+        // Request permission and subscribe
+        const userId = this.getUserId();
+        const result = await WebPush.enablePushNotifications(userId);
+
+        if (result.success) {
+            alert('Notifications enabled! You will receive task reminders.');
+        } else {
+            alert(result.error || 'Failed to enable notifications.');
+        }
+
         this.updateSettingsStatus();
     }
 
@@ -652,24 +706,26 @@ class TodoApp {
         }
 
         try {
-            const notification = new Notification('Test Notification', {
-                body: 'This is a test notification from ToDo App!',
-                icon: '/icons/icon-192.png',
-                badge: '/icons/icon-72.png',
-                tag: 'test-notification'
-            });
+            if (typeof WebPush !== 'undefined') {
+                await WebPush.sendLocalTestNotification();
+            } else {
+                // Fallback to basic notification
+                const notification = new Notification('Test Notification', {
+                    body: 'This is a test notification from ToDo App!',
+                    icon: '/ToDo-App/icons/icon-192.png',
+                    badge: '/ToDo-App/icons/icon-72.png',
+                    tag: 'test-notification'
+                });
 
-            notification.onclick = () => {
-                window.focus();
-                notification.close();
-            };
+                notification.onclick = () => {
+                    window.focus();
+                    notification.close();
+                };
+            }
 
             this.showToast('Test notification sent!');
+            setTimeout(() => this.hideToast(), 3000);
 
-            // Auto-hide toast after 3 seconds
-            setTimeout(() => {
-                this.hideToast();
-            }, 3000);
         } catch (error) {
             console.error('Error sending test notification:', error);
             alert('Error sending test notification: ' + error.message);
@@ -1088,15 +1144,24 @@ class TodoApp {
         }
     }
 
-    // Firebase Messaging functionality
-    initializeFirebaseMessaging() {
-        if (!('Notification' in window)) {
+    // Web Push Notifications (iOS PWA compatible)
+    async initializeFirebaseMessaging() {
+        console.log('[App] Initializing push notifications...');
+        
+        // Wait for WebPush module to be available
+        if (typeof WebPush === 'undefined') {
+            console.warn('[App] WebPush module not loaded');
             return;
         }
 
-        // Check if user has already granted permission
-        if (Notification.permission === 'granted') {
-            this.getAndSaveFCMToken();
+        // Check platform info
+        console.log('[App] Platform:', WebPush.isIOSPWA() ? 'iOS PWA' : (WebPush.isIOS() ? 'iOS Safari' : 'Web'));
+        
+        // Initialize will check permissions and existing subscriptions
+        const userId = this.getUserId();
+        if (userId && Notification.permission === 'granted') {
+            const result = await WebPush.initializeWebPush(userId);
+            console.log('[App] Push init result:', result);
         }
     }
 
@@ -1314,15 +1379,21 @@ class TodoApp {
 
     async requestNotificationPermission() {
         try {
-            const permission = await Notification.requestPermission();
+            if (typeof WebPush === 'undefined') {
+                console.error('WebPush module not loaded');
+                alert('Push module not loaded. Please refresh the page.');
+                return;
+            }
 
-            if (permission === 'granted') {
-                await this.getAndSaveFCMToken();
+            const userId = this.getUserId();
+            const result = await WebPush.enablePushNotifications(userId);
+
+            if (result.success) {
                 alert('Notifications enabled! You will receive task reminders.');
-            } else if (permission === 'denied') {
-                alert('Notifications blocked. Enable them in browser settings.');
+            } else if (result.permission === 'denied') {
+                alert('Notifications blocked. Enable them in browser/device settings.');
             } else {
-                alert('Notification permission not granted.');
+                alert(result.error || 'Notification permission not granted.');
             }
         } catch (error) {
             console.error('Error requesting notification permission:', error);
@@ -1331,37 +1402,41 @@ class TodoApp {
     }
 
     async getAndSaveFCMToken() {
+        // This method is now handled by WebPush module
+        // Kept for backwards compatibility
         try {
-            if (typeof messaging === 'undefined') {
-                console.error('Firebase Messaging not initialized');
-                return;
-            }
-
-            const currentToken = await messaging.getToken({ vapidKey });
-
-            if (currentToken) {
-                await this.saveFCMTokenToFirestore(currentToken);
-            } else {
+            if (typeof WebPush !== 'undefined') {
+                const userId = this.getUserId();
+                await WebPush.initializeWebPush(userId);
             }
         } catch (error) {
-            console.error('Error getting FCM token:', error);
+            console.error('Error initializing push:', error);
         }
     }
 
     async saveFCMTokenToFirestore(token) {
+        // Deprecated: Use WebPush.saveSubscriptionToFirestore instead
+        // This is kept for backwards compatibility only
         try {
             const userId = this.getUserId();
             const settings = this.loadNotificationSettings();
 
             await firestore.collection('users').doc(userId).set({
+                // Legacy FCM token (deprecated)
                 fcmToken: token,
-                notificationTime: settings.time, // Save preferred notification time (e.g. "09:00")
+                notificationTime: settings.time,
+                notificationSettings: {
+                    enabled: true,
+                    notifyDueToday: settings.dueToday,
+                    notifyOverdue: settings.overdue,
+                    notifyDueTomorrow: settings.dueTomorrow
+                },
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 userId: userId
             }, { merge: true });
 
         } catch (error) {
-            console.error('Error saving FCM token to Firestore:', error);
+            console.error('Error saving to Firestore:', error);
         }
     }
 
