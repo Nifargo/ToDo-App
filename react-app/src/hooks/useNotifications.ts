@@ -9,7 +9,6 @@ import {
   isIOS,
   isIOSPWA,
   isIOSPushSupported,
-  requestNotificationPermission,
   sendTestNotification,
 } from '@/services/fcmService';
 

@@ -18,13 +18,12 @@ interface NotificationSettingsProps {
 
 const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onError, onClose }) => {
   const { user } = useAuth();
-  const { 
-    permission, 
-    requestPermission, 
+  const {
+    permission,
+    requestPermission,
     sendTest,
-    loading: permissionLoading, 
+    loading: permissionLoading,
     isSupported,
-    isIOSDevice,
     isIOSPWAMode,
     requiresHomeScreen
   } = useNotifications();
@@ -283,7 +282,7 @@ const NotificationSettings: FC<NotificationSettingsProps> = ({ onSuccess, onErro
                 try {
                   await sendTest();
                   onSuccess('Test notification sent!');
-                } catch (error) {
+                } catch {
                   onError('Failed to send test notification');
                 }
               }}
