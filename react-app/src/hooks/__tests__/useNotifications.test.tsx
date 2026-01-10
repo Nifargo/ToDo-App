@@ -335,7 +335,11 @@ describe('useNotifications', () => {
       });
 
       await act(async () => {
-        await result.current.requestPermission();
+        try {
+          await result.current.requestPermission();
+        } catch {
+          // Error expected
+        }
       });
 
       await waitFor(() => {
