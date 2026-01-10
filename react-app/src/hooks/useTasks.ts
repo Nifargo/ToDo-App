@@ -3,7 +3,7 @@ import { where } from 'firebase/firestore';
 import { useFirestore } from './useFirestore';
 import { useAuth } from './useAuth';
 import { useLocalStorage } from './useLocalStorage';
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Task, CreateTaskInput, UpdateTaskInput, TaskFilter } from '@/types';
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, isWithinInterval, differenceInHours } from 'date-fns';
 
@@ -219,16 +219,30 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     }
   }, [user, firebaseTasks, deleteTask, setLocalTasks]);
 
-  // Run cleanup on mount and every hour
+  // Store cleanup function in ref to always use latest version
+  const cleanupRef = useRef(cleanupOldCompletedTasks);
   useEffect(() => {
-    cleanupOldCompletedTasks();
+    cleanupRef.current = cleanupOldCompletedTasks;
+  }, [cleanupOldCompletedTasks]);
 
-    // Run cleanup every hour
-    const intervalId = setInterval(cleanupOldCompletedTasks, 60 * 60 * 1000);
+  // Track if we've run initial cleanup
+  const initialCleanupDone = useRef(false);
 
+  // Run cleanup when tasks are first loaded
+  useEffect(() => {
+    if (!initialCleanupDone.current && !firebaseLoading && ((user && firebaseTasks) || !user)) {
+      cleanupRef.current();
+      initialCleanupDone.current = true;
+    }
+  }, [firebaseLoading, user, firebaseTasks]);
+
+  // Run cleanup every hour
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      cleanupRef.current();
+    }, 60 * 60 * 1000);
     return () => clearInterval(intervalId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only on mount
+  }, []);
 
   return {
     tasks: user ? (firebaseTasks || []) : filteredLocalTasks,
