@@ -250,7 +250,7 @@ async function setupWebPushSubscription(options: PushNotificationOptions): Promi
       console.log('[Push] Creating new subscription...');
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource
       });
     }
 
@@ -542,7 +542,6 @@ export async function sendTestNotification(): Promise<void> {
     body: 'Push нотифікації працюють! Все налаштовано правильно.',
     icon: '/ToDo-App/icons/icon-192.png',
     badge: '/ToDo-App/icons/icon-72.png',
-    vibrate: [200, 100, 200],
     tag: 'test-notification',
     data: { url: '/ToDo-App/' }
   });
