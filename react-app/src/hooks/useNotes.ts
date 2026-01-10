@@ -68,7 +68,10 @@ export const useNotes = () => {
           updatedAt: now,
         };
 
-        // Reload notes in background to sync with server
+        // Add to state immediately so getNote() can find it
+        setNotes((prev) => [...prev, newNote]);
+
+        // Reload notes in background to sync with server (for timestamps, etc)
         loadNotes();
 
         return newNote;
