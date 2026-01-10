@@ -1,4 +1,4 @@
-import { type FC, useState, useMemo } from 'react';
+import { type FC, useState, useMemo, useRef } from 'react';
 import { Plus, LogIn, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/utils/cn';
@@ -16,10 +16,13 @@ interface ListViewProps {
 
 const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLoginScreen }) => {
   const { user } = useAuth();
-  const { notes, loading, createNote, updateNote, deleteNote, getNote, isCreating } = useNotes();
+  const { notes, loading, createNote, updateNote, deleteNote, getNote } = useNotes();
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [filter, setFilter] = useState<'all' | 'owned' | 'shared'>('all');
+
+  // Use ref to track note ID synchronously during creation
+  const currentNoteIdRef = useRef<string | null>(null);
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -47,26 +50,28 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
 
   const handleCreateNote = async () => {
     setIsCreatingNew(true);
+    currentNoteIdRef.current = null; // Reset the ref
     onEditingChange?.(true);
   };
 
   const handleNoteClick = (noteId: string) => {
     setEditingNoteId(noteId);
+    currentNoteIdRef.current = noteId; // Track in ref
     onEditingChange?.(true);
   };
 
   const handleSaveNote = async (content: string) => {
     try {
-      if (isCreatingNew) {
-        // Prevent concurrent creation attempts
-        if (isCreating) {
-          return;
-        }
+      // Use ref to check current note ID synchronously
+      if (currentNoteIdRef.current) {
+        // Note already exists, update it
+        await updateNote(currentNoteIdRef.current, { content });
+      } else {
+        // Create new note only once
         const newNote = await createNote({ content });
+        currentNoteIdRef.current = newNote.id; // Store ID in ref immediately
         setIsCreatingNew(false);
         setEditingNoteId(newNote.id);
-      } else if (editingNoteId) {
-        await updateNote(editingNoteId, { content });
       }
     } catch (error) {
       console.error('Error saving note:', error);
@@ -89,6 +94,7 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
   const handleBack = () => {
     setEditingNoteId(null);
     setIsCreatingNew(false);
+    currentNoteIdRef.current = null; // Reset the ref
     onEditingChange?.(false);
   };
 
