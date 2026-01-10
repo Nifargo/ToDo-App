@@ -22,20 +22,27 @@ vi.mock('@/config/firebase', () => ({
 }));
 
 // Mock FCM Service
-const mockRequestFCMToken = vi.fn();
+const mockRequestPushNotifications = vi.fn();
 const mockDeleteFCMToken = vi.fn();
+const mockUnsubscribeWebPush = vi.fn();
 const mockSetupForegroundMessageHandler = vi.fn();
-const mockIsFCMSupported = vi.fn();
-const mockRequestNotificationPermission = vi.fn();
+const mockIsPushSupported = vi.fn();
+const mockIsIOS = vi.fn();
+const mockIsIOSPWA = vi.fn();
+const mockIsIOSPushSupported = vi.fn();
+const mockSendTestNotification = vi.fn();
 
 vi.mock('@/services/fcmService', () => ({
-  requestFCMToken: (...args: unknown[]) => mockRequestFCMToken(...args),
+  requestPushNotifications: (...args: unknown[]) => mockRequestPushNotifications(...args),
   deleteFCMToken: (...args: unknown[]) => mockDeleteFCMToken(...args),
+  unsubscribeWebPush: (...args: unknown[]) => mockUnsubscribeWebPush(...args),
   setupForegroundMessageHandler: (...args: unknown[]) =>
     mockSetupForegroundMessageHandler(...args),
-  isFCMSupported: () => mockIsFCMSupported(),
-  requestNotificationPermission: (...args: unknown[]) =>
-    mockRequestNotificationPermission(...args),
+  isPushSupported: () => mockIsPushSupported(),
+  isIOS: () => mockIsIOS(),
+  isIOSPWA: () => mockIsIOSPWA(),
+  isIOSPushSupported: () => mockIsIOSPushSupported(),
+  sendTestNotification: (...args: unknown[]) => mockSendTestNotification(...args),
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -67,7 +74,10 @@ describe('useNotifications', () => {
       return vi.fn();
     });
 
-    mockIsFCMSupported.mockReturnValue(true);
+    mockIsPushSupported.mockReturnValue(true);
+    mockIsIOS.mockReturnValue(false);
+    mockIsIOSPWA.mockReturnValue(false);
+    mockIsIOSPushSupported.mockReturnValue(true);
     mockSetupForegroundMessageHandler.mockReturnValue(vi.fn()); // Return unsubscribe function
 
     // Mock Notification API
@@ -113,11 +123,11 @@ describe('useNotifications', () => {
         expect(result.current.isSupported).toBe(true);
       });
 
-      expect(mockIsFCMSupported).toHaveBeenCalled();
+      expect(mockIsPushSupported).toHaveBeenCalled();
     });
 
     it('should detect when FCM is not supported', async () => {
-      mockIsFCMSupported.mockReturnValue(false);
+      mockIsPushSupported.mockReturnValue(false);
 
       const { result } = renderHook(() => useNotifications(), { wrapper });
 
@@ -169,7 +179,7 @@ describe('useNotifications', () => {
     });
 
     it('should not set up handler when FCM not supported', async () => {
-      mockIsFCMSupported.mockReturnValue(false);
+      mockIsPushSupported.mockReturnValue(false);
 
       renderHook(() => useNotifications(), { wrapper });
 
@@ -209,8 +219,7 @@ describe('useNotifications', () => {
 
   describe('requestPermission', () => {
     it('should successfully request permission and FCM token', async () => {
-      mockRequestNotificationPermission.mockResolvedValue('granted');
-      mockRequestFCMToken.mockResolvedValue({
+      mockRequestPushNotifications.mockResolvedValue({
         success: true,
         token: 'test-fcm-token-123',
       });
@@ -221,46 +230,22 @@ describe('useNotifications', () => {
         await result.current.requestPermission();
       });
 
-      expect(mockRequestNotificationPermission).toHaveBeenCalled();
-      expect(mockRequestFCMToken).toHaveBeenCalledWith({
+      expect(mockRequestPushNotifications).toHaveBeenCalledWith({
         userId: 'test-user-123',
         saveToFirestore: true,
       });
 
       await waitFor(() => {
         expect(result.current.token).toBe('test-fcm-token-123');
-        expect(result.current.permission).toBe('granted');
         expect(result.current.loading).toBe(false);
         expect(result.current.error).toBeNull();
       });
     });
 
-    it('should handle permission denied', async () => {
-      mockRequestNotificationPermission.mockResolvedValue('denied');
-
-      const { result } = renderHook(() => useNotifications(), { wrapper });
-
-      // Catch error inside act() to allow React to flush state updates
-      await act(async () => {
-        try {
-          await result.current.requestPermission();
-        } catch (err) {
-          expect((err as Error).message).toContain('Notification permission denied');
-        }
-      });
-
-      // Error should now be set in state
-      expect(result.current.permission).toBe('denied');
-      expect(result.current.token).toBeNull();
-      expect(result.current.loading).toBe(false);
-      expect(result.current.error).toBeTruthy();
-    });
-
     it('should handle FCM token request failure', async () => {
-      mockRequestNotificationPermission.mockResolvedValue('granted');
-      mockRequestFCMToken.mockResolvedValue({
+      mockRequestPushNotifications.mockResolvedValue({
         success: false,
-        error: new Error('Failed to get FCM token'),
+        error: new Error('Failed to set up notifications'),
       });
 
       const { result } = renderHook(() => useNotifications(), { wrapper });
@@ -270,7 +255,7 @@ describe('useNotifications', () => {
         try {
           await result.current.requestPermission();
         } catch (err) {
-          expect((err as Error).message).toContain('Failed to get FCM token');
+          expect((err as Error).message).toContain('Failed to set up notifications');
         }
       });
 
@@ -280,13 +265,11 @@ describe('useNotifications', () => {
     });
 
     it('should set loading state while requesting', async () => {
-      mockRequestNotificationPermission.mockImplementation(() => {
-        return new Promise((resolve) => setTimeout(() => resolve('granted'), 100));
-      });
-
-      mockRequestFCMToken.mockResolvedValue({
-        success: true,
-        token: 'test-token',
+      mockRequestPushNotifications.mockImplementation(() => {
+        return new Promise((resolve) => setTimeout(() => resolve({
+          success: true,
+          token: 'test-token',
+        }), 100));
       });
 
       const { result } = renderHook(() => useNotifications(), { wrapper });
@@ -309,16 +292,10 @@ describe('useNotifications', () => {
     });
 
     it('should clear previous error before requesting', async () => {
-      mockRequestNotificationPermission.mockResolvedValue('granted');
-      mockRequestFCMToken.mockResolvedValue({
-        success: true,
-        token: 'test-token',
-      });
-
       const { result } = renderHook(() => useNotifications(), { wrapper });
 
       // First request fails
-      mockRequestFCMToken.mockResolvedValueOnce({
+      mockRequestPushNotifications.mockResolvedValueOnce({
         success: false,
         error: new Error('First error'),
       });
@@ -335,7 +312,7 @@ describe('useNotifications', () => {
       expect(result.current.error).toBeTruthy();
 
       // Second request succeeds
-      mockRequestFCMToken.mockResolvedValueOnce({
+      mockRequestPushNotifications.mockResolvedValueOnce({
         success: true,
         token: 'test-token',
       });
@@ -349,7 +326,7 @@ describe('useNotifications', () => {
     });
 
     it('should throw error when FCM not supported', async () => {
-      mockIsFCMSupported.mockReturnValue(false);
+      mockIsPushSupported.mockReturnValue(false);
 
       const { result } = renderHook(() => useNotifications(), { wrapper });
 
@@ -371,12 +348,12 @@ describe('useNotifications', () => {
   describe('revokePermission', () => {
     it('should successfully revoke FCM token', async () => {
       mockDeleteFCMToken.mockResolvedValue(undefined);
+      mockUnsubscribeWebPush.mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useNotifications(), { wrapper });
 
       // Set initial token
-      mockRequestNotificationPermission.mockResolvedValue('granted');
-      mockRequestFCMToken.mockResolvedValue({
+      mockRequestPushNotifications.mockResolvedValue({
         success: true,
         token: 'test-token',
       });
@@ -393,6 +370,7 @@ describe('useNotifications', () => {
       });
 
       expect(mockDeleteFCMToken).toHaveBeenCalledWith('test-user-123');
+      expect(mockUnsubscribeWebPush).toHaveBeenCalledWith('test-user-123');
 
       await waitFor(() => {
         expect(result.current.token).toBeNull();
@@ -444,11 +422,16 @@ describe('useNotifications', () => {
 
     it('should clear error before revoking', async () => {
       mockDeleteFCMToken.mockResolvedValue(undefined);
+      mockUnsubscribeWebPush.mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useNotifications(), { wrapper });
 
       // Set initial error
-      mockRequestNotificationPermission.mockResolvedValue('denied');
+      mockRequestPushNotifications.mockResolvedValue({
+        success: false,
+        error: new Error('Test error'),
+      });
+
       // Catch error inside act() to allow React to flush state updates
       await act(async () => {
         try {
@@ -519,8 +502,7 @@ describe('useNotifications', () => {
     });
 
     it('should handle FCM token without token value', async () => {
-      mockRequestNotificationPermission.mockResolvedValue('granted');
-      mockRequestFCMToken.mockResolvedValue({
+      mockRequestPushNotifications.mockResolvedValue({
         success: true,
         // No token field
       });
