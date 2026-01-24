@@ -82,7 +82,7 @@ interface PushPayload {
 self.addEventListener('push', (event: PushEvent) => {
   console.log('[SW] Push event received');
 
-  let data = {
+  const data = {
     title: 'Мої Справи',
     body: 'У тебе є завдання!',
     url: `${BASE_PATH}/`
@@ -103,7 +103,7 @@ self.addEventListener('push', (event: PushEvent) => {
         data.body = payload.body || data.body;
       }
       data.url = payload.data?.url || payload.url || data.url;
-    } catch (e) {
+    } catch {
       console.log('[SW] Push data is text:', event.data.text());
       data.body = event.data.text();
     }
