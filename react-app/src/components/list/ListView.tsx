@@ -1,4 +1,4 @@
-import { type FC, useState, useMemo, useRef } from 'react';
+import { type FC, useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, LogIn, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/utils/cn';
@@ -60,7 +60,7 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
     onEditingChange?.(true);
   };
 
-  const handleSaveNote = async (content: string) => {
+  const handleSaveNote = useCallback(async (content: string) => {
     try {
       // Use ref to check current note ID synchronously
       if (currentNoteIdRef.current) {
@@ -78,7 +78,7 @@ const ListView: FC<ListViewProps> = ({ onShowToast, onEditingChange, onShowLogin
       onShowToast?.('error', 'Failed to save note');
       throw error;
     }
-  };
+  }, [createNote, updateNote, onShowToast]);
 
   const handleDeleteNote = async (id: string) => {
     try {

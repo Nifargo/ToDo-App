@@ -9,7 +9,6 @@ import {
   getDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
   arrayUnion,
@@ -81,8 +80,7 @@ export const noteService = {
   async getNotesByUser(userId: string): Promise<Note[]> {
     const q = query(
       collection(db, NOTES_COLLECTION),
-      where('userId', '==', userId),
-      orderBy('updatedAt', 'desc')
+      where('userId', '==', userId)
     );
 
     const snapshot = await getDocs(q);
@@ -104,8 +102,7 @@ export const noteService = {
   async getSharedNotes(userId: string): Promise<Note[]> {
     const q = query(
       collection(db, NOTES_COLLECTION),
-      where('sharedWith', 'array-contains', userId),
-      orderBy('updatedAt', 'desc')
+      where('sharedWith', 'array-contains', userId)
     );
 
     const snapshot = await getDocs(q);

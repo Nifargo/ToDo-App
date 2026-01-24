@@ -71,9 +71,6 @@ export const useNotes = () => {
         // Add to state immediately so getNote() can find it
         setNotes((prev) => [...prev, newNote]);
 
-        // Reload notes in background to sync with server (for timestamps, etc)
-        loadNotes();
-
         return newNote;
       } catch (error) {
         console.error('Error creating note:', error);
@@ -82,7 +79,7 @@ export const useNotes = () => {
         setIsCreating(false);
       }
     },
-    [user, loadNotes]
+    [user]
   );
 
   // Update existing note

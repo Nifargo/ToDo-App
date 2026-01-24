@@ -28,8 +28,12 @@ const NoteEditor: FC<NoteEditorProps> = ({ note, onBack, onSave, onDelete }) => 
   // Auto-save when content changes (debounced)
   useEffect(() => {
     const saveNote = async () => {
-      if (debouncedContent === note?.content) return; // No changes
-      if (!debouncedContent.trim() && !note) return; // Don't save empty new note
+      if (debouncedContent === note?.content) {
+        return; // No changes
+      }
+      if (!debouncedContent.trim() && !note) {
+        return; // Don't save empty new note
+      }
 
       setIsSaving(true);
       try {
