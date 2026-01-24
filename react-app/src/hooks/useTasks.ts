@@ -5,7 +5,7 @@ import { useAuth } from './useAuth';
 import { useLocalStorage } from './useLocalStorage';
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import type { Task, CreateTaskInput, UpdateTaskInput, TaskFilter } from '@/types';
-import { startOfDay, endOfDay, startOfMonth, endOfMonth, isWithinInterval, differenceInHours } from 'date-fns';
+import { startOfDay, endOfDay, startOfMonth, endOfMonth, isWithinInterval, differenceInMinutes } from 'date-fns';
 
 interface UseTasksResult {
   tasks: Task[];
@@ -193,17 +193,17 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     await updateTask(id, updateData);
   };
 
-  // Cleanup old completed tasks (older than 8 hours)
+  // Cleanup old completed tasks (older than 1 hour)
   const cleanupOldCompletedTasks = useCallback(async () => {
     const now = new Date();
-    const HOURS_BEFORE_DELETE = 8;
+    const MINUTES_BEFORE_DELETE = 60; // 1 hour
 
     if (user) {
       // Firebase: find and delete old completed tasks
       const tasksToDelete = (firebaseTasks || []).filter(task => {
         if (!task.completed || !task.completedAt) return false;
         const completedDate = new Date(task.completedAt);
-        return differenceInHours(now, completedDate) >= HOURS_BEFORE_DELETE;
+        return differenceInMinutes(now, completedDate) >= MINUTES_BEFORE_DELETE;
       });
 
       for (const task of tasksToDelete) {
@@ -214,7 +214,7 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
       setLocalTasks(prev => prev.filter(task => {
         if (!task.completed || !task.completedAt) return true;
         const completedDate = new Date(task.completedAt);
-        return differenceInHours(now, completedDate) < HOURS_BEFORE_DELETE;
+        return differenceInMinutes(now, completedDate) < MINUTES_BEFORE_DELETE;
       }));
     }
   }, [user, firebaseTasks, deleteTask, setLocalTasks]);
@@ -236,11 +236,11 @@ export function useTasks(filter: TaskFilter = 'all'): UseTasksResult {
     }
   }, [firebaseLoading, user, firebaseTasks]);
 
-  // Run cleanup every hour
+  // Run cleanup every 5 minutes
   useEffect(() => {
     const intervalId = setInterval(() => {
       cleanupRef.current();
-    }, 60 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5 minutes
     return () => clearInterval(intervalId);
   }, []);
 

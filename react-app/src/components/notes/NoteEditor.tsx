@@ -1,4 +1,4 @@
-import { type FC, useState, useEffect, useCallback } from 'react';
+import { type FC, useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, Trash2, CheckSquare, Users } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -22,33 +22,47 @@ const NoteEditor: FC<NoteEditorProps> = ({ note, onBack, onSave, onDelete }) => 
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const debouncedContent = useDebounce(content, 800);
 
+  // Track last saved content to prevent infinite save loops
+  const lastSavedContentRef = useRef<string>(note?.content || '');
+  const isSavingRef = useRef(false);
+
   // Get sharing methods from useNotes hook
   const { shareNote, unshareNote, getCollaborators, isNoteOwner } = useNotes();
 
   // Auto-save when content changes (debounced)
   useEffect(() => {
     const saveNote = async () => {
-      if (debouncedContent === note?.content) {
-        return; // No changes
-      }
-      if (!debouncedContent.trim() && !note) {
-        return; // Don't save empty new note
+      // Prevent concurrent saves
+      if (isSavingRef.current) {
+        return;
       }
 
+      // Check against last saved content, not note.content (which changes reference)
+      if (debouncedContent === lastSavedContentRef.current) {
+        return; // No changes since last save
+      }
+
+      if (!debouncedContent.trim()) {
+        return; // Don't save empty content
+      }
+
+      isSavingRef.current = true;
       setIsSaving(true);
       try {
         await onSave(debouncedContent);
+        lastSavedContentRef.current = debouncedContent; // Track what we saved
       } catch (error) {
         console.error('Error auto-saving note:', error);
       } finally {
+        isSavingRef.current = false;
         setIsSaving(false);
       }
     };
 
-    if (note || debouncedContent.trim()) {
+    if (debouncedContent.trim()) {
       saveNote();
     }
-  }, [debouncedContent, note, onSave]);
+  }, [debouncedContent, onSave]);
 
   const handleDelete = useCallback(async () => {
     if (!note || !onDelete) return;
@@ -68,19 +82,23 @@ const NoteEditor: FC<NoteEditorProps> = ({ note, onBack, onSave, onDelete }) => 
 
   const handleBack = useCallback(async () => {
     // Save before going back if there are unsaved changes
-    // Only save if we have an existing note (note is not null)
-    if (note && content !== note.content && content.trim()) {
+    const hasUnsavedChanges = content.trim() && content !== lastSavedContentRef.current;
+
+    if (hasUnsavedChanges && !isSavingRef.current) {
+      isSavingRef.current = true;
       setIsSaving(true);
       try {
         await onSave(content);
+        lastSavedContentRef.current = content;
       } catch (error) {
         console.error('Error saving note:', error);
       } finally {
+        isSavingRef.current = false;
         setIsSaving(false);
       }
     }
     onBack();
-  }, [content, note, onSave, onBack]);
+  }, [content, onSave, onBack]);
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
