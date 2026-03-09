@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, UserPlus, Users, Trash2 } from 'lucide-react';
 import type { Note, NoteCollaborator, ShareNoteResult } from '@/types';
 
@@ -24,14 +25,24 @@ export function ShareNoteModal({
   const [email, setEmail] = useState('');
   const [collaborators, setCollaborators] = useState<NoteCollaborator[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingCollaborators, setLoadingCollaborators] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   // Define loadCollaborators with useCallback to prevent infinite loop
   const loadCollaborators = useCallback(async () => {
     if (!note) return;
-    const collab = await getCollaborators(note.id);
-    setCollaborators(collab);
+    setLoadingCollaborators(true);
+    try {
+      const collab = await getCollaborators(note.id);
+      setCollaborators(collab);
+    } catch (err) {
+      console.error('Error loading collaborators:', err);
+      setError('Не вдалося завантажити список користувачів');
+    } finally {
+      setLoadingCollaborators(false);
+    }
   }, [note, getCollaborators]);
 
   // Load collaborators when modal opens
@@ -41,6 +52,22 @@ export function ShareNoteModal({
       loadCollaborators();
     }
   }, [isOpen, note, loadCollaborators]);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) {
+      onClose();
+    }
+  };
 
   const handleShare = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,30 +80,46 @@ export function ShareNoteModal({
     }
 
     setLoading(true);
-    const result = await onShare(email);
-    setLoading(false);
+    try {
+      const result = await onShare(email);
+      setLoading(false);
 
-    if (result.success) {
-      setSuccess(result.message);
-      setEmail('');
-      loadCollaborators();
-    } else {
-      setError(result.message);
+      if (result.success) {
+        setSuccess(result.message);
+        setEmail('');
+        loadCollaborators();
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      console.error('Error sharing note:', err);
+      setLoading(false);
+      setError('Помилка при діленні нотатки');
     }
   };
 
   const handleUnshare = async (userId: string) => {
     setError('');
     setSuccess('');
-    await onUnshare(userId);
-    setSuccess('Доступ видалено');
-    loadCollaborators();
+    try {
+      await onUnshare(userId);
+      setSuccess('Доступ видалено');
+      loadCollaborators();
+    } catch (err) {
+      console.error('Error unsharing note:', err);
+      setError('Не вдалося видалити доступ');
+    }
   };
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  // Use portal to render outside NoteEditor's stacking context
+  return createPortal(
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+    >
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-white/10">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10">
@@ -135,50 +178,57 @@ export function ShareNoteModal({
               Доступ до нотатки ({collaborators.length})
             </h3>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {collaborators.map((collab) => (
-                <div
-                  key={collab.uid}
-                  className="flex items-center justify-between bg-white/5 rounded-lg p-3 border border-white/10"
-                >
-                  <div className="flex items-center gap-3">
-                    {collab.photoURL ? (
-                      <img
-                        src={collab.photoURL}
-                        alt={collab.displayName || collab.email}
-                        className="h-8 w-8 rounded-full"
-                      />
-                    ) : (
-                      <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm font-bold">
-                        {(collab.displayName || collab.email)[0].toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <div className="text-white font-medium flex items-center gap-2">
-                        {collab.displayName || collab.email}
-                        {collab.isOwner && (
-                          <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">
-                            Власник
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-white/60 text-sm">{collab.email}</div>
-                    </div>
-                  </div>
-                  {/* Remove button (only for non-owners, only owner can remove) */}
-                  {isOwner && !collab.isOwner && (
-                    <button
-                      onClick={() => handleUnshare(collab.uid)}
-                      className="text-red-400 hover:text-red-300 p-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+              {loadingCollaborators ? (
+                <div className="text-center py-4 text-white/50 text-sm">
+                  Завантаження...
                 </div>
-              ))}
+              ) : (
+                collaborators.map((collab) => (
+                  <div
+                    key={collab.uid}
+                    className="flex items-center justify-between bg-white/5 rounded-lg p-3 border border-white/10"
+                  >
+                    <div className="flex items-center gap-3">
+                      {collab.photoURL ? (
+                        <img
+                          src={collab.photoURL}
+                          alt={collab.displayName || collab.email}
+                          className="h-8 w-8 rounded-full"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm font-bold">
+                          {(collab.displayName || collab.email)[0].toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-white font-medium flex items-center gap-2">
+                          {collab.displayName || collab.email}
+                          {collab.isOwner && (
+                            <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">
+                              Власник
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-white/60 text-sm">{collab.email}</div>
+                      </div>
+                    </div>
+                    {/* Remove button (only for non-owners, only owner can remove) */}
+                    {isOwner && !collab.isOwner && (
+                      <button
+                        onClick={() => handleUnshare(collab.uid)}
+                        className="text-red-400 hover:text-red-300 p-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
