@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [main]
 
+# Дозволити лише один одночасний деплой на Pages, черга замість скасування
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   test:
     name: Test & Build & Deploy
