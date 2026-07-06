@@ -9,8 +9,18 @@ on:
 
 jobs:
   test:
-    name: Test & Build
+    name: Test & Build & Deploy
     runs-on: ubuntu-latest
+
+    # Дозвіл на запис для GitHub Pages
+    permissions:
+      pages: write
+      id-token: write
+
+    # Налаштування середовища для GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       # 1. Завантажити код з GitHub
@@ -64,46 +74,15 @@ jobs:
       - name: Build project
         run: cd react-app && npm run build
 
-      # 9. Завантажити build артефакти (для deploy job)
-      - name: Upload build artifacts
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: react-app-build
-          path: react-app/dist
-          retention-days: 1
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    # Дозвіл на запис для GitHub Pages
-    permissions:
-      pages: write
-      id-token: write
-
-    # Налаштування середовища для GitHub Pages
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      # 1. Завантажити build артефакти
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: react-app-build
-          path: dist
-
-      # 2. Завантажити Pages артефакт
+      # 9. Завантажити Pages артефакт (лише для push у main)
       - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: react-app/dist
 
-      # 3. Deploy на GitHub Pages
+      # 10. Deploy на GitHub Pages (лише для push у main)
       - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         id: deployment
         uses: actions/deploy-pages@v4
